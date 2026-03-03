@@ -1,0 +1,27 @@
+{
+  "name": "hal-mcp",
+  "version": "1.0.0",
+  "description": "HAL — Structured Agentic Coding Governor (MCP Server)",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "hal": "dist/index.js"
+  },
+  "scripts": {
+    "prepare": "tsc",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "mcp:dev": "nodemon --quiet --watch dist --ext js --exec 'node dist/index.js'"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "nodemon": "^3.1.14",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
