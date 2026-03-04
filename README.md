@@ -1,237 +1,210 @@
 # HAL — Structured Agentic Coding Governor
 
-HAL is an MCP (Model Context Protocol) server that enforces a governed loop separating definition, implementation, and review. No code is accepted without passing all three gates.
+HAL is an MCP (Model Context Protocol) server that enforces a governed coding loop. Every change must pass through **Define → Implement → Review → Decide** before being accepted. No code ships without passing all gates.
 
 ---
 
-## Quick Start
+## Usage
 
-### 1. Install & Build
+### Install & Build
 
 ```bash
-npm install   # installs dependencies and runs tsc automatically
+npm install        # installs dependencies and compiles TypeScript
 ```
 
-### 2. Connect to VSCode
-
-HAL is pre-configured in `.vscode/mcp.json`. It runs via **nodemon**, which restarts the server automatically whenever you build. Open the project in VSCode and the MCP server starts immediately.
-
-### 3. Start using HAL
-
-In GitHub Copilot Chat, type:
-
-```
-/mcp.hal.hal
-```
-
-That's it. HAL will tell you your current status and exactly what to do next.
-
----
-
-## Which Client to Use
-
-HAL splits work across two AI clients to keep the implementation stage isolated from governance:
-
-| Stage | Command | Client |
-|---|---|---|
-| DEFINE | `/mcp.hal.define` | GitHub Copilot Chat |
-| IMPLEMENT | `/mcp.hal.implement` | **Claude terminal client** |
-| REVIEW | `/mcp.hal.review` | GitHub Copilot Chat |
-| DECIDE | `/mcp.hal.decide` | GitHub Copilot Chat |
-| Status | `/mcp.hal.hal` | Either |
-
-### GitHub Copilot Chat (DEFINE, REVIEW, DECIDE)
-
-HAL is pre-configured in `.vscode/mcp.json`. Open Copilot Chat in VSCode and type the commands directly:
-
-```
-/mcp.hal.define
-/mcp.hal.review
-/mcp.hal.decide
-```
-
-### Claude Terminal Client (IMPLEMENT)
-
-The Claude terminal client runs as a separate agentic session with shell and file system access. Set the following environment variables to connect it to the HAL MCP server:
+### Common Commands
 
 ```bash
-export MCP_BASE_URL=http://localhost:<port>
-export MCP_API_KEY=<your-key>
+npm run build       # compile TypeScript → dist/
+npm run build:watch # watch mode — recompiles on every change
+npm run dev         # run directly via tsx (no build step)
+npm start           # run the compiled server once
 ```
 
-Then invoke the implement stage:
+### Try it
 
+```bash
+npm install && npm run build && npm start
 ```
-claude mcp invoke /mcp.hal.implement
-```
+
+This starts the HAL MCP server over stdio. Connect it to VSCode or Claude Code as described below, then start a cycle with `/mcp.hal.define` or `/mcp__hal__define`.
 
 ---
 
-## Development Workflow
+## MCP Configuration — VSCode
 
-To get auto-reload on code changes, run the TypeScript compiler in watch mode in a terminal:
+HAL ships with `.vscode/mcp.json`, which starts the server automatically via nodemon (restarts on rebuild).
+
+**Step 1** — Start the TypeScript compiler in watch mode:
 
 ```bash
 npm run build:watch
 ```
 
-Nodemon watches `dist/` and restarts the MCP server whenever the build output changes. No manual restarts needed.
+**Step 2** — Open the project in VSCode. The HAL MCP server starts automatically from `.vscode/mcp.json`. No manual server start needed.
 
-**Other run modes:**
+**Step 3** — Open **GitHub Copilot Chat** and use these commands:
 
-```bash
-npm run dev     # tsx direct (no build step, for quick iteration)
-npm start       # run the built dist/index.js once
-```
+| Stage | Command | Notes |
+|-------|---------|-------|
+| Define | `/mcp.hal.define` | Describe your intent; HAL generates the definition |
+| Review | `/mcp.hal.review` | Run after implementation is submitted |
+| Decide | `/mcp.hal.decide` | Final human approval |
+
+> **Note:** Run the **Implement** stage using Claude Code (see below), not Copilot Chat. This keeps the implementation session isolated from governance.
 
 ---
 
-## The Five Commands
+## MCP Configuration — Claude
 
-These are the only commands you need to know. Type them in GitHub Copilot Chat to move through the workflow.
+The **Claude Code** terminal client handles the Implement stage. It needs file-system and shell access — that's why it runs as a separate session from governance.
 
-| Command | When to use | What happens |
-|---|---|---|
-| `/mcp.hal.hal` | Anytime | Shows status, progress, and what to do next |
-| `/mcp.hal.define` | IDLE or DEFINING | AI asks clarifying questions → saves definition draft |
-| `/mcp.hal.implement` | IMPLEMENTING | AI implements the locked definition |
-| `/mcp.hal.review` | REVIEWING | AI independently reviews the implementation |
-| `/mcp.hal.decide` | DECIDING | You approve or reject the final result |
+**Step 1** — Add HAL as an MCP server. Choose one option:
 
-HAL always tells you which command to use next — you never have to guess.
+*Option A — one-time CLI registration (uses the built dist):*
+```bash
+claude mcp add hal -- node "$(pwd)/dist/index.js"
+```
+
+*Option B — project-local config with live-reload (for development):*
+
+Create `.claude/mcp.json` in the project root:
+```json
+{
+  "mcpServers": {
+    "hal": {
+      "type": "stdio",
+      "command": "node_modules/.bin/nodemon",
+      "args": ["--quiet", "--watch", "dist", "--ext", "js", "--exec", "node dist/index.js"]
+    }
+  }
+}
+```
+
+**Step 2** — Make sure the server is compiled (if not already running `build:watch`):
+
+```bash
+npm run build
+```
+
+**Step 3** — In a Claude Code terminal session, invoke the implement stage:
+
+```
+/mcp__hal__implement
+```
+
+Claude Code will read the locked definition and implement it exactly as specified.
+
+---
+
+## Which Client Handles Which Stage
+
+| Stage | Command (VSCode) | Command (Claude Code) | Client |
+|-------|------------------|-----------------------|--------|
+| Define | `/mcp.hal.define` | `/mcp__hal__define` | GitHub Copilot Chat (or Claude Code) |
+| Implement | — | `/mcp__hal__implement` | **Claude Code only** |
+| Review | `/mcp.hal.review` | `/mcp__hal__review` | GitHub Copilot Chat (or Claude Code) |
+| Decide | `/mcp.hal.decide` | `/mcp__hal__decide` | GitHub Copilot Chat (or Claude Code) |
+
+---
+
+## Development Workflow
+
+To get auto-reload on code changes:
+
+```bash
+npm run build:watch   # terminal 1 — watches src/, recompiles to dist/
+```
+
+Nodemon (configured in `.vscode/mcp.json`) watches `dist/` and restarts the MCP server whenever compiled output changes.
 
 ---
 
 ## The Workflow
 
-Work moves through five states in a strict sequence. No stage can be bypassed.
+Work moves through four states in a strict sequence. No stage can be bypassed.
 
 ```
-IDLE → DEFINING → IMPLEMENTING → REVIEWING → DECIDING → IDLE
+DEFINING → IMPLEMENTING → REVIEWING → DECIDING → (next cycle)
 ```
 
-### Stage 1 — DEFINE (`/mcp.hal.define`)
+### Stage 1 — Define
 
-The AI enters DEFINE MODE. Hard rules apply:
-- It will **not** suggest implementation details, algorithms, or design patterns
-- It **will** ask clarifying questions one or two at a time
-- It **will** challenge vague language ("make it better", "handle errors")
-- It **will** force explicit decisions on tradeoffs
+Start a new cycle and describe your intent. HAL generates a complete Definition Artifact with scope, acceptance criteria, constraints, and forbidden paths. Edit the draft freely — it's plain markdown saved in `.agents/hal/`. When you're satisfied, say **"lock"** to seal it for implementation.
 
-When all 8 sections of the Definition Artifact are complete, the AI saves a draft to `.agents/hal/definition.md`. You can open and edit this file freely — it's plain markdown. When you're happy, say **"lock"** and the definition is locked for implementation.
-
-**What good definition prompts look like:**
+**Example prompts:**
 
 ```
-/mcp.hal.define I want to add a rate limiter to the API endpoints
-```
-```
+/mcp.hal.define Add a rate limiter to the API endpoints
 /mcp.hal.define The login form needs to validate email format before submitting
-```
-```
 /mcp.hal.define Refactor the config loader to support environment-specific overrides
 ```
 
-Keep your initial prompt to the intent — the AI will extract everything else through questions.
+Keep your prompt to the intent — HAL asks follow-up questions if needed.
 
-### Stage 2 — IMPLEMENT (`/mcp.hal.implement`)
+### Stage 2 — Implement
 
-The AI receives the locked definition and implements it exactly. It will:
-- Touch only the files listed in the definition scope
-- Avoid forbidden paths
-- Not implement anything in Non-Goals
-- Commit all changes when done
+HAL reads the locked definition and implements it exactly: touching only declared files, avoiding forbidden paths, and ignoring non-goals. When done, it calls `submit_implementation` automatically.
 
-When finished, it calls `submit_implementation` automatically.
+Use the **Claude Code** terminal client for this stage (see [MCP Configuration — Claude](#mcp-configuration--claude)).
 
-**Using the Claude terminal client:**
+### Stage 3 — Review
 
-Use the **Claude terminal client** for this stage — not Copilot Chat. See [Which Client to Use](#which-client-to-use) for setup, then run:
+An independent reviewer checks the implementation in two phases:
 
-```
-claude mcp invoke /mcp.hal.implement
-```
+- **Phase A (mechanical):** Did it touch only declared files? Did it avoid forbidden paths?
+- **Phase B (semantic):** Does it satisfy all acceptance criteria? Were non-goals sneaked in?
 
-If you want to give context about the environment, say it before invoking the command.
+If BLOCKED, the state returns to Implementing (up to 3 retries). At the retry limit it escalates to Deciding.
 
-### Stage 3 — REVIEW (`/mcp.hal.review`)
+### Stage 4 — Decide
 
-An independent reviewer AI checks the implementation in two phases:
+You make the final call. HAL presents a plain-English summary and asks for approval.
 
-**Phase A (mechanical):** Did the implementation touch only the declared files? Did it touch any forbidden paths? Is the diff empty?
-
-**Phase B (semantic):** Does it satisfy all acceptance criteria? Are edge cases handled? Were any non-goals sneaked in?
-
-If the review is BLOCKED, the state returns to IMPLEMENTING (up to 3 retries). At the retry limit, it escalates to DECIDING.
-
-**What good review prompts look like:**
-
-No special prompt needed — just type `/mcp.hal.review`. The reviewer has everything it needs from the locked definition and git diff.
-
-### Stage 4 — DECIDE (`/mcp.hal.decide`)
-
-You make the final call. The AI presents a plain-English summary of what was built and the reviewer's verdict, then asks:
-
-> Do you approve this implementation? (yes / no)
-
-- **yes** → cycle recorded in history, returns to IDLE
-- **no** → you explain what needs to change, definition is cleared, returns to DEFINING
+- **Approved** → cycle recorded, ready for next cycle
+- **Rejected** → explain what needs to change; definition is cleared and returns to Defining
 
 ---
 
 ## The Definition Artifact
 
-The definition draft is saved to `.agents/hal/definition.md` after the DEFINE Q&A. It looks like this:
+Each cycle lives in `.agents/hal/<NNNN>-<slug>.md`. A locked definition looks like this:
 
 ```markdown
 ---
-intent: "Add rate limiting to API endpoints"
-status: DRAFT
+id: "0001"
+slug: add-rate-limiting
+status: IMPLEMENTING
+branch: hal/0001-add-rate-limiting
 ---
 
-# HAL Definition Artifact
-
-## Change Objective
+## Objective
 All API endpoints return HTTP 429 after more than 100 requests per minute from a single IP.
 
 ## Acceptance Criteria
 - A counter per IP is tracked with a 60-second sliding window
 - Requests beyond the limit receive 429 with a Retry-After header
-- Requests within the limit pass through unchanged
 
 ## Constraints
 - Must not introduce a database dependency
-- Must work with the existing Express middleware stack
 
-## Scope (Claimed Files)
+## Scope
 - src/middleware/rateLimit.ts
 - src/app.ts
 
 ## Non-Goals
-- Per-user rate limiting (only per-IP)
-- Configurable limits via environment variables
+- Per-user rate limiting
 
 ## Invariants
 - Existing middleware order is unchanged
 - All current tests continue to pass
-
-## Implementation Notes
-- (none)
 
 ## Forbidden Paths
 - src/core/
 - tests/
 ```
 
-Edit any section before saying "lock". Bullet points are parsed as list items. The `Change Objective` section should be a single sentence.
-
----
-
-## State & History
-
-HAL persists state to `.agents/hal/state.json`. Delete it to reset to `IDLE`.
-
-After an approved cycle, the full record is added to `history` in state.json. Review artifacts (with rollback plans) are written to `ce-reviews/`.
+Edit any section before saying "lock". The Objective must be a single sentence.
 
 ---
 
@@ -240,38 +213,7 @@ After an approved cycle, the full record is added to `history` in state.json. Re
 Read-only data the MCP client can fetch at any time:
 
 | URI | Content |
-|---|---|
-| `hal://status` | Current state + retry count + active intent |
-| `hal://definition` | Locked Definition Artifact (JSON) |
-| `hal://history` | All completed cycles (JSON array) |
-| `hal://latest-review` | Most recent verdict and feedback (JSON) |
-
----
-
-## Tools Reference
-
-| Tool | When called | What it does |
-|---|---|---|
-| `start_cycle(intent)` | IDLE | Starts a new cycle, records baseline commit |
-| `save_definition_draft(...)` | DEFINING | Saves definition as markdown, stays in DEFINING |
-| `lock_definition()` | DEFINING | Reads markdown draft, locks definition → IMPLEMENTING |
-| `set_definition(...)` | DEFINING | Locks definition directly (programmatic use) |
-| `submit_implementation(comment)` | IMPLEMENTING | Snapshots git diff → REVIEWING |
-| `submit_review(verdict, feedback)` | REVIEWING | APPROVED → DECIDING, BLOCKED → IMPLEMENTING |
-| `decide(approved, feedback)` | DECIDING | true → IDLE, false → DEFINING |
-
----
-
-## Source Layout
-
-```
-src/
-├── index.ts       ← server init + transport
-├── constants.ts   ← MAX_RETRIES, STATE_FILE, DEFINITION_DRAFT_FILE
-├── state.ts       ← types + loadState / saveState
-├── markdown.ts    ← definition draft save / markdown parser
-├── git.ts         ← getHeadCommit / getGitDiff / getChangedFiles
-├── resources.ts   ← hal:// resource handlers
-├── prompts.ts     ← hal / hal-define / hal-implement / hal-review / hal-decide
-└── tools.ts       ← all seven tool implementations
-```
+|-----|---------|
+| `hal://status` | Current state and active cycles |
+| `hal://cycles` | All cycle records (JSON array) |
+| `hal://cycle/{id}` | Full record for a specific cycle |
