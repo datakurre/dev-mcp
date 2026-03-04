@@ -95,11 +95,10 @@ export function getMainBranch(): string {
 }
 
 /**
- * Checks out the main branch, merges `branchName` with --no-ff, then
- * returns to the original branch. Non-fatal — returns error string or null.
+ * Checks out the main branch and merges `branchName` with --no-ff.
+ * Stays on main after merge. Non-fatal — returns error string or null.
  */
 export function mergeBranchToMain(branchName: string, commitMessage: string): string | null {
-  const original = getCurrentBranch();
   const main = getMainBranch();
   try {
     execSync(`git checkout ${main}`, { cwd: process.cwd() });
@@ -109,13 +108,5 @@ export function mergeBranchToMain(branchName: string, commitMessage: string): st
     return null;
   } catch (e) {
     return e instanceof Error ? e.message.split("\n")[0] : String(e);
-  } finally {
-    if (original && original !== main) {
-      try {
-        execSync(`git checkout ${original}`, { cwd: process.cwd() });
-      } catch {
-        // best effort
-      }
-    }
   }
 }

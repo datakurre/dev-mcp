@@ -103,20 +103,17 @@ export function getCycleFilePath(id: string, slug: string): string {
   return join(CYCLES_DIR, `${id}_${slug}.md`);
 }
 
-/** Returns YYYY-MM-DD, or YYYY-MM-DD-2, -3 … if that date already has cycles. */
+/** Returns YYYY-MM-DD_NN (e.g. 2026-03-04_01, 2026-03-04_02 …) */
 export function getNextCycleId(): string {
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   mkdirSync(CYCLES_DIR, { recursive: true });
-  const files = readdirSync(CYCLES_DIR).filter((f) => /^\d{4}-\d{2}-\d{2}/.test(f));
-  const todayFiles = files.filter((f) => f.startsWith(`${today}_`) || f.startsWith(`${today}-`));
-  if (todayFiles.length === 0) return today;
-  // Find highest sequence suffix for today
-  let maxSeq = 1;
-  for (const f of todayFiles) {
-    const m = f.match(new RegExp(`^${today}-(\\d+)_`));
-    if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+  const files = readdirSync(CYCLES_DIR).filter((f) => f.startsWith(`${today}_`));
+  let maxCounter = 0;
+  for (const f of files) {
+    const m = f.match(new RegExp(`^${today}_(\\d{2})_`));
+    if (m) maxCounter = Math.max(maxCounter, parseInt(m[1], 10));
   }
-  return `${today}-${maxSeq + 1}`;
+  return `${today}_${String(maxCounter + 1).padStart(2, "0")}`;
 }
 
 export function findCycleFile(id: string): string | null {
