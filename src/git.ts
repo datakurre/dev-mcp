@@ -1,20 +1,15 @@
 import { execSync } from "child_process";
-import type { Cycle } from "./state.js";
 
 export function getHeadCommit(): string | null {
   try {
-    return execSync("git rev-parse HEAD", { cwd: process.cwd() })
-      .toString()
-      .trim();
+    return execSync("git rev-parse HEAD", { cwd: process.cwd() }).toString().trim();
   } catch {
     return null;
   }
 }
 
 export function getGitDiff(baseCommit: string | null): string {
-  if (!baseCommit) {
-    return "(no baseline commit recorded — diff unavailable)";
-  }
+  if (!baseCommit) return "(no baseline commit recorded — diff unavailable)";
   try {
     return execSync(`git diff ${baseCommit}..HEAD`, {
       cwd: process.cwd(),
@@ -38,17 +33,48 @@ export function getChangedFiles(baseCommit: string | null): string[] {
   }
 }
 
-export function computeRollback(cycle: Cycle): string {
-  if (!cycle.baseCommit || !cycle.headCommitAtSubmission) {
+export function computeRollback(baseCommit: string | null, headCommit: string | null): string {
+  if (!baseCommit || !headCommit) {
     return "(no commit range available — rollback unavailable)";
   }
-  const changedFiles = getChangedFiles(cycle.baseCommit);
-  const fileList = changedFiles.length > 0
-    ? changedFiles.map((f) => `#   ${f}`).join("\n")
-    : "#   (no files changed)";
+  const changedFiles = getChangedFiles(baseCommit);
+  const fileList =
+    changedFiles.length > 0
+      ? changedFiles.map((f) => `#   ${f}`).join("\n")
+      : "#   (no files changed)";
   return (
-    `git revert --no-commit ${cycle.headCommitAtSubmission}\n` +
+    `git revert --no-commit ${headCommit}\n` +
     `# Affected files (${changedFiles.length}):\n${fileList}\n` +
     `# To abort rollback: git revert --abort`
   );
+}
+
+export function getCurrentBranch(): string | null {
+  try {
+    return execSync("git rev-parse --abbrev-ref HEAD", { cwd: process.cwd() })
+      .toString()
+      .trim();
+  } catch {
+    return null;
+  }
+}
+
+/** Creates and checks out a new branch. Returns error message on failure, null on success. */
+export function createBranch(name: string): string | null {
+  try {
+    execSync(`git checkout -b ${name}`, { cwd: process.cwd() });
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
+  }
+}
+
+/** Renames the current branch in-place. Returns error message on failure, null on success. */
+export function renameBranch(newName: string): string | null {
+  try {
+    execSync(`git branch -m ${newName}`, { cwd: process.cwd() });
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
+  }
 }
