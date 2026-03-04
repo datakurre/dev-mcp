@@ -17,7 +17,7 @@ function ok(text: string): ToolResult {
 }
 
 function err(text: string): ToolResult {
-  return { content: [{ type: "text", text: `ERROR: ${text}` }], isError: true };
+  return { content: [{ type: "text", text: `I'm sorry, Dave. ${text}` }], isError: true };
 }
 
 export function registerTools(server: Server): void {
