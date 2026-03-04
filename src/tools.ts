@@ -12,7 +12,7 @@ import {
   resolveCycle,
   listCycles,
 } from "./cycles.js";
-import { getHeadCommit, createBranch, renameBranch } from "./git.js";
+import { getHeadCommit, createBranch, renameBranch, getCurrentBranch, mergeBranchToMain } from "./git.js";
 import { MAX_RETRIES } from "./constants.js";
 
 type ToolResult = { content: [{ type: "text"; text: string }]; isError?: true };
@@ -100,13 +100,18 @@ export function registerTools(server: Server): void {
       {
         name: "lock_definition",
         description:
-          "Lock the definition from the cycle markdown file. Validates all required fields, renames the cycle file to match the objective, renames the git branch, and transitions DEFINING → IMPLEMENTING.",
+          "Lock the definition from the cycle markdown file. Validates all required fields, renames the cycle file and git branch using the shortname, and transitions DEFINING → IMPLEMENTING.",
         inputSchema: {
           type: "object",
           properties: {
             cycleId: {
               type: "string",
-              description: "Cycle ID (e.g. '0001'). Optional if only one active cycle.",
+              description: "Cycle ID (e.g. '2026-03-04'). Optional if only one active cycle.",
+            },
+            shortname: {
+              type: "string",
+              description:
+                "3–5 word kebab-case summary of the objective used as the file/branch name (e.g. 'add-jwt-auth', 'fix-login-redirect'). Generate this from the objective before calling.",
             },
           },
           required: [],
@@ -189,7 +194,8 @@ export function registerTools(server: Server): void {
         (a.implementationNotes as string[] | undefined) ?? [],
         (a.forbiddenPaths as string[] | undefined) ?? [],
       );
-    if (name === "lock_definition") return lockDefinition(cycleId);
+    if (name === "lock_definition")
+      return lockDefinition(cycleId, a.shortname ? String(a.shortname) : undefined);
     if (name === "submit_implementation")
       return submitImplementation(cycleId, String(a.comment));
     if (name === "submit_review")
@@ -209,11 +215,20 @@ export function registerTools(server: Server): void {
 // ---------------------------------------------------------------------------
 
 function startCycle(intent: string): ToolResult {
+  const currentBranch = getCurrentBranch();
+  const mainBranch = currentBranch === "master" ? "master" : "main";
+  if (currentBranch && currentBranch !== mainBranch) {
+    return err(
+      `You are on branch "${currentBranch}", not "${mainBranch}".\n` +
+        `Switch to ${mainBranch} before starting a new cycle to keep cycle IDs consistent.\n` +
+        `Run: git checkout ${mainBranch}`,
+    );
+  }
   const id = getNextCycleId();
-  const branchName = `hal/${id}-undefined`;
-  const branchErr = createBranch(branchName);
+  const branchName = `hal/${id}_undefined`;
   const baseCommit = getHeadCommit();
   createCycle(id, branchName, baseCommit);
+  const branchErr = createBranch(branchName);
   const branchNote = branchErr
     ? `\n⚠️  Branch creation failed (${branchErr.split("\n")[0]}). Continuing without a dedicated branch.`
     : `\nBranch: ${branchName}`;
@@ -261,7 +276,7 @@ function saveDefinitionDraft(
   );
 }
 
-function lockDefinition(cycleId: string | undefined): ToolResult {
+function lockDefinition(cycleId: string | undefined, shortname?: string): ToolResult {
   const resolved = resolveCycle(cycleId, "DEFINING");
   if ("error" in resolved) return err(resolved.error);
   let { cycle } = resolved;
@@ -289,12 +304,14 @@ function lockDefinition(cycleId: string | undefined): ToolResult {
     return err(`Definition is missing Scope (files). Please edit the file and try again.`);
   }
 
-  // Rename cycle file to match objective slug
-  const newSlug = slugify(definition.objective);
+  // Use AI-provided shortname if given, otherwise derive from objective (3-5 words)
+  const newSlug = shortname
+    ? shortname.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").slice(0, 60)
+    : slugify(definition.objective);
   cycle = renameCycleFile(cycle, newSlug);
 
   // Rename git branch
-  const newBranch = `hal/${cycle.frontMatter.id}-${newSlug}`;
+  const newBranch = `hal/${cycle.frontMatter.id}_${newSlug}`;
   const branchErr = renameBranch(newBranch);
 
   // Update status
@@ -415,9 +432,18 @@ function decide(cycleId: string | undefined, approved: boolean, feedback: string
     cycle.frontMatter.status = "DECIDED";
     saveCycle(cycle);
     const total = listCycles().filter((c) => c.frontMatter.status === "DECIDED").length;
+
+    // Merge cycle branch into main
+    const mergeMsg = `Merge ${cycle.frontMatter.branch}: ${cycle.definition?.objective ?? cycle.frontMatter.slug}`;
+    const mergeErr = mergeBranchToMain(cycle.frontMatter.branch, mergeMsg);
+    const mergeNote = mergeErr
+      ? `\n⚠️  Auto-merge failed: ${mergeErr}. Merge manually: git checkout main && git merge --no-ff ${cycle.frontMatter.branch}`
+      : `\nMerged ${cycle.frontMatter.branch} → main.`;
+
     return ok(
       `Cycle ${cycle.frontMatter.id} APPROVED. Status: DECIDED\n\n` +
         `Feedback: ${feedback}` +
+        mergeNote +
         warningLine +
         `\n\nCycle recorded (${total} completed total). Ready for next **#define**.`,
     );

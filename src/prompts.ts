@@ -4,7 +4,7 @@ import {
   GetPromptRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { getActiveCycles, resolveCycle } from "./cycles.js";
-import { getChangedFiles, computeRollback } from "./git.js";
+import { getChangedFiles, computeRollback, getCurrentBranch, getMainBranch } from "./git.js";
 import { MAX_RETRIES } from "./constants.js";
 
 function formatList(items: string[]): string {
@@ -17,36 +17,18 @@ function formatScope(files: string[]): string {
   return files.map((f) => `- ${f}`).join("\n");
 }
 
-function progressBar(status: string): string {
-  const stages = ["DEFINING", "IMPLEMENTING", "REVIEWING", "DECIDING"];
-  const labels = ["Define", "Implement", "Review", "Decide"];
-  const idx = stages.indexOf(status);
-  return labels
-    .map((label, i) => {
-      if (i < idx) return `✓ ${label}`;
-      if (i === idx) return `▶ ${label} ◀`;
-      return `  ${label}`;
-    })
-    .join("  →  ");
-}
-
 export function registerPrompts(server: Server): void {
   server.setRequestHandler(ListPromptsRequestSchema, async () => ({
     prompts: [
       {
-        name: "hello",
-        description:
-          "Show current status, active cycles, and what to do next. Start here with #hello.",
-      },
-      {
         name: "define",
         description:
-          "DEFINE stage: ask for the objective, generate a complete Definition Artifact, save it for review before locking.",
+          "DEFINE stage: receive the objective, generate a complete Definition Artifact, save it for review before locking.",
       },
       {
         name: "implement",
         description:
-          "IMPLEMENT stage: execute the locked definition exactly and commit the result.",
+          "IMPLEMENT stage: execute all locked definitions and commit the results.",
       },
       {
         name: "review",
@@ -65,96 +47,32 @@ export function registerPrompts(server: Server): void {
     const { name } = request.params;
 
     // ─────────────────────────────────────────────────────────────────────────
-    // #hello — Status & help
-    // ─────────────────────────────────────────────────────────────────────────
-    if (name === "hello") {
-      const active = getActiveCycles();
-
-      const cyclesSummary =
-        active.length === 0
-          ? "No active cycles."
-          : active
-              .map((c) => {
-                const fm = c.frontMatter;
-                const retryNote = fm.retryCount > 0 ? ` (retry ${fm.retryCount}/${MAX_RETRIES})` : "";
-                return (
-                  `**Cycle ${fm.id}** — ${fm.slug === "undefined" ? "(no objective yet)" : fm.slug}\n` +
-                  `  Status: ${fm.status}${retryNote}\n` +
-                  `  Branch: ${fm.branch}\n` +
-                  `  Progress: ${progressBar(fm.status)}`
-                );
-              })
-              .join("\n\n");
-
-      return {
-        description: "Status and help",
-        messages: [
-          {
-            role: "user" as const,
-            content: {
-              type: "text" as const,
-              text: `You are HAL — Structured Agentic Coding Governor. Give the user a friendly, concise status report right now. Do not ask questions.
-
-Use Copilot Chat for DEFINE, REVIEW, and DECIDE stages (invoke \`/mcp.hal.define\`, \`/mcp.hal.review\`, \`/mcp.hal.decide\` inside GitHub Copilot Chat). Use the Claude terminal client for IMPLEMENT (for example: run \`claude mcp invoke /mcp.hal.implement\` after configuring your \`MCP_BASE_URL\` and credentials). See README.md for MCP configuration instructions for both clients.
-
-## Addressing Rules
-
-- Always address the human as "Dave" in explicit addresses.
-- Begin your response with exactly this line (verbatim): "Affirmative, Dave. I read you." — then continue with the status report.
-- When reporting an error or failure, begin with one of: "I'm sorry, Dave." or "I'm sorry, Dave. I'm afraid I can't do that." or "I'm sorry Dave, I don't have enough information."
-
-## Current State
-
-${cyclesSummary}
-
-## What to tell the user
-
-1. Your first line must be exactly: "Affirmative, Dave. I read you."
-2. Show the active cycles summary above
-3. Tell them the ONE next action for each active cycle (or how to start one if none active)
-4. Show this command cheat sheet exactly as formatted below:
-
----
-**Commands**
-
-| Command      | Stage       | What it does                              |
-|--------------|-------------|-------------------------------------------|
-| \`#hello\`     | Any         | Show status and help (you are here)       |
-| \`#define\`    | IDLE/DEFINE | Ask for objective and build the definition|
-| \`#implement\` | IMPLEMENT   | Get implementation instructions           |
-| \`#review\`    | REVIEW      | Run the independent review                |
-| \`#decide\`    | DECIDE      | Approve or reject the implementation      |
-
-**Tip:** Each command puts an agent in the right mode. Just follow the prompts.
-
-> **Clients:** Use **GitHub Copilot Chat** for \`#define\`, \`#review\`, and \`#decide\`. Use the **Claude terminal** for \`#implement\`. See \`README.md\` for configuration.
----
-
-Keep the total response short and scannable. No walls of text.`,
-            },
-          },
-        ],
-      };
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
     // #define — DEFINE MODE
     // ─────────────────────────────────────────────────────────────────────────
     if (name === "define") {
       const active = getActiveCycles();
       const defining = active.find((c) => c.frontMatter.status === "DEFINING");
+      const currentBranch = getCurrentBranch();
+      const mainBranch = getMainBranch();
+      const onMain = !currentBranch || currentBranch === mainBranch;
 
       let cycleContext: string;
-      if (active.length === 0 || !defining) {
+      if (defining) {
         cycleContext =
-          `No cycle is in DEFINING state.\n` +
-          (active.length === 0
-            ? `No active cycles. When the human tells you what they want to build, call start_cycle(intent) first.`
-            : `Active cycles: ${active.map((c) => `${c.frontMatter.id} (${c.frontMatter.status})`).join(", ")}. Tell the user to complete the current stage first.`);
+          `Active DEFINING cycle: **${defining.frontMatter.id}**\n` +
+          `Cycle file: \`${defining.filePath}\`\n` +
+          `Branch: ${defining.frontMatter.branch}`;
+      } else if (!onMain) {
+        cycleContext =
+          `⚠️  Currently on branch "${currentBranch}", not "${mainBranch}".\n` +
+          `New cycles must be started from ${mainBranch}. Tell the user to run: git checkout ${mainBranch}`;
+      } else if (active.length > 0) {
+        cycleContext =
+          `No cycle in DEFINING state. Active cycles in other stages:\n` +
+          active.map((c) => `  - ${c.frontMatter.id} (${c.frontMatter.status})`).join("\n") +
+          `\nTell the user to complete the current stage before starting a new definition.`;
       } else {
-        cycleContext =
-          `Active cycle: **${defining.frontMatter.id}** — ${defining.frontMatter.slug === "undefined" ? "(no objective yet)" : defining.frontMatter.slug}\n` +
-          `Cycle file: \`${defining.filePath}\``;
+        cycleContext = `No active cycles. Ready to start a new cycle on ${mainBranch}.`;
       }
 
       return {
@@ -164,37 +82,66 @@ Keep the total response short and scannable. No walls of text.`,
             role: "user" as const,
             content: {
               type: "text" as const,
-              text: `You are operating in DEFINE MODE.
+              text: `You are operating in DEFINE MODE for the HAL engineering workflow.
 
-Your role is to help the human produce a precise Definition Artifact that will be handed verbatim to an automated implementer.
+Your ONLY job right now is to capture an objective and produce a Definition Artifact — NOT to implement anything.
 
 ## Addressing Rules
 
 - Always address the human as "Dave" in explicit addresses.
-- When reporting an error, begin with: "I'm sorry, Dave." or "I'm sorry, Dave. I'm afraid I can't do that." or "I'm sorry Dave, I don't have enough information."
+- When reporting an error, begin with: "I'm sorry, Dave." or "I'm sorry, Dave. I'm afraid I can't do that."
+
+## CRITICAL: What you must NOT do
+
+- Do NOT search the codebase yet
+- Do NOT write any code
+- Do NOT suggest implementations, algorithms, or approaches
+- Do NOT start any work until the definition is locked
+- Do NOT ask more than one question
 
 ## Workflow
 
-1. If no cycle is active, call start_cycle(intent) first using the human's own words as the intent.
-2. Ask the human for **one thing only**: a single-sentence objective describing what will be different when the change is complete.
-3. From that objective, **you generate the entire definition** — do NOT ask more questions. Use your knowledge of the codebase to infer:
-   - **Acceptance Criteria** — specific, verifiable conditions for "done"
-   - **Constraints** — hard limits the implementation must respect (tech choices, compatibility, etc.)
-   - **Scope** — search the codebase to find the exact file paths likely to need changes; list only files that must be touched
-   - **Non-Goals** — related things that are explicitly out of scope
-   - **Invariants** — what must remain true before and after
-   - **Implementation Notes** — ordering or environment constraints only (no design guidance)
-   - **Forbidden Paths** — files the implementation must NOT touch (e.g. lock files, migrations, generated code)
-4. Call save_definition_draft() with all fields to write the cycle file.
-5. Tell the user: "I've saved the definition to \`<cycle-file-path>\`. Open it, review and edit freely — it's plain markdown. When you're happy with it, say **lock**."
-6. When the human says "lock", call lock_definition() — this validates all fields, renames the file to match the objective, and moves to IMPLEMENTING.
+**Step 1 — Get the objective (if not already provided)**
 
-## Hard Rules
+If the human's message already contains a clear objective (what they want to build or change), use it directly and skip to Step 2.
 
-- Do NOT ask clarifying questions beyond the objective. Make reasonable decisions and let the human edit the file.
-- Do NOT suggest implementation details, algorithms, or refactors.
-- Do NOT optimize or extend scope.
-- If the human asks for implementation advice, refuse and redirect.
+If no objective is present yet, ask exactly this one question and nothing else:
+
+> "What should be different when this change is complete? Describe it in one sentence."
+
+Wait for the answer before doing anything else.
+
+**Step 2 — Start a cycle (if none active)**
+
+If no cycle is in DEFINING state, call start_cycle(intent) using the objective as the intent. If the branch check fails (not on ${mainBranch}), tell the user and stop.
+
+**Step 3 — Generate the definition**
+
+From the objective alone, generate all definition fields. Search the codebase to find relevant files for Scope.
+
+- **Acceptance Criteria** — specific, verifiable conditions for "done"
+- **Constraints** — hard limits (tech choices, compatibility, backwards-compat)
+- **Scope** — exact file paths that need to change (search the codebase)
+- **Non-Goals** — related things explicitly out of scope
+- **Invariants** — what must remain true before and after
+- **Implementation Notes** — ordering/environment constraints only
+- **Forbidden Paths** — files must NOT touch (lock files, generated code, migrations)
+
+**Step 4 — Save the draft**
+
+Call save_definition_draft() with all fields. Tell the user:
+
+> "I've saved the definition to \`<cycle-file-path>\`. Open it, review and edit freely — it's plain markdown. When you're happy with it, say **lock**."
+
+**Step 5 — Lock on user confirmation**
+
+When the human says "lock" (or similar), generate a 3–5 word kebab shortname summarising the objective (e.g. \`add-jwt-auth\`, \`fix-login-redirect\`, \`refactor-user-model\`), then call:
+
+\`\`\`
+lock_definition(cycleId: "...", shortname: "<3-5-word-slug>")
+\`\`\`
+
+This validates fields, renames the file and branch, and advances to IMPLEMENTING.
 
 ## Current Context
 
@@ -209,66 +156,73 @@ ${cycleContext}`,
     // #implement — IMPLEMENT stage
     // ─────────────────────────────────────────────────────────────────────────
     if (name === "implement") {
-      const resolved = resolveCycle(undefined, "IMPLEMENTING");
-      if ("error" in resolved) {
-        return {
-          description: "IMPLEMENT stage — error",
-          messages: [
-            {
-              role: "user" as const,
-              content: {
-                type: "text" as const,
-                text: `I'm sorry, Dave. ${resolved.error}\n\nComplete **#define** first, then use **#implement**.`,
-              },
-            },
-          ],
-        };
-      }
-      const { cycle, warning } = resolved;
-      const { frontMatter: fm, definition } = cycle;
+      const active = getActiveCycles();
+      const implementing = active.filter((c) => c.frontMatter.status === "IMPLEMENTING");
 
-      if (!definition) {
+      if (implementing.length === 0) {
         return {
-          description: "IMPLEMENT stage — error",
+          description: "IMPLEMENT stage — no cycles ready",
           messages: [
             {
               role: "user" as const,
               content: {
                 type: "text" as const,
-                text: `I'm sorry, Dave. Cycle ${fm.id} has no locked definition. Complete **#define** first.`,
+                text: `I'm sorry, Dave. No cycles are in IMPLEMENTING state.\n\nActive cycles: ${
+                  active.length === 0
+                    ? "none"
+                    : active.map((c) => `${c.frontMatter.id} (${c.frontMatter.status})`).join(", ")
+                }\n\nComplete **#define** first, then use **#implement**.`,
               },
             },
           ],
         };
       }
 
-      const lastReview = cycle.reviews[cycle.reviews.length - 1];
-      const priorFeedback =
-        fm.retryCount > 0 && lastReview
-          ? `\n\n## Prior Review Feedback (retry ${fm.retryCount}/${MAX_RETRIES})\n${lastReview.feedback}`
-          : "";
+      // Build definition block for each implementing cycle
+      const cycleBlocks = implementing
+        .map((cycle) => {
+          const fm = cycle.frontMatter;
+          const def = cycle.definition;
+          if (!def) return `### Cycle ${fm.id}\n⚠️  No locked definition — skip this cycle.`;
 
-      const forbiddenSection =
-        definition.forbiddenPaths.length > 0
-          ? `\n**Forbidden Paths (must not touch):**\n${formatScope(definition.forbiddenPaths)}`
-          : "";
+          const lastReview = cycle.reviews[cycle.reviews.length - 1];
+          const priorFeedback =
+            fm.retryCount > 0 && lastReview
+              ? `\n\n**Prior Review Feedback (retry ${fm.retryCount}/${MAX_RETRIES}):**\n${lastReview.feedback}`
+              : "";
 
-      const nonGoalsSection =
-        definition.nonGoals.length > 0
-          ? `\n**Non-Goals (out of scope — do not implement):**\n${formatList(definition.nonGoals)}`
-          : "";
+          const forbiddenSection =
+            def.forbiddenPaths.length > 0
+              ? `\n**Forbidden Paths (must not touch):**\n${formatScope(def.forbiddenPaths)}`
+              : "";
+          const nonGoalsSection =
+            def.nonGoals.length > 0
+              ? `\n**Non-Goals (do not implement):**\n${formatList(def.nonGoals)}`
+              : "";
+          const invariantsSection =
+            def.invariants.length > 0
+              ? `\n**Invariants (must remain true):**\n${formatList(def.invariants)}`
+              : "";
+          const notesSection =
+            def.implementationNotes.length > 0
+              ? `\n**Implementation Notes:**\n${formatList(def.implementationNotes)}`
+              : "";
 
-      const invariantsSection =
-        definition.invariants.length > 0
-          ? `\n**Invariants (must remain true after your changes):**\n${formatList(definition.invariants)}`
-          : "";
+          return (
+            `### Cycle ${fm.id} — ${def.objective}\n\n` +
+            `**Cycle file:** \`${cycle.filePath}\`\n` +
+            `**Branch:** ${fm.branch}\n\n` +
+            `**Acceptance Criteria:**\n${formatList(def.criteria)}\n\n` +
+            `**Constraints:**\n${formatList(def.constraints)}\n\n` +
+            `**Claimed Files (Scope):**\n${formatScope(def.scope)}` +
+            `${forbiddenSection}${nonGoalsSection}${invariantsSection}${notesSection}` +
+            `${priorFeedback}\n\n` +
+            `When done: call \`submit_implementation(cycleId: "${fm.id}", comment: "...")\``
+          );
+        })
+        .join("\n\n---\n\n");
 
-      const notesSection =
-        definition.implementationNotes.length > 0
-          ? `\n**Implementation Notes:**\n${formatList(definition.implementationNotes)}`
-          : "";
-
-      const warningNote = warning ? `\n\n⚠️  ${warning}` : "";
+      const cycleIds = implementing.map((c) => c.frontMatter.id).join(", ");
 
       return {
         description: "IMPLEMENT stage — Implementer Agent",
@@ -277,39 +231,30 @@ ${cycleContext}`,
             role: "user" as const,
             content: {
               type: "text" as const,
-              text: `You are the Implementer. Execute the Definition Artifact below exactly. Do not interpret, extend, or improve beyond what is specified.
+              text: `You are the Implementer. You have ${implementing.length} cycle(s) ready to implement: **${cycleIds}**.
+
+Execute each Definition Artifact exactly. Do not interpret, extend, or improve beyond what is specified.
 
 Always address the human as "Dave" in explicit addresses. When reporting an error, begin with: "I'm sorry, Dave." or "I'm sorry, Dave. I'm afraid I can't do that."
 
-When you are done committing all changes, call submit_implementation(cycleId: "${fm.id}", comment: "<brief summary>"). Then tell the user: "Implementation submitted. Use **#review** to run the independent review."
-${warningNote}
+For each cycle below:
+1. Check out its branch (if not already on it)
+2. Implement exactly what the definition specifies
+3. Run existing tests if applicable
+4. Commit all changes
+5. Call submit_implementation(cycleId: "...", comment: "...") with a brief summary
 
-## Active Definition — Cycle ${fm.id}
+## Implementation Rules
 
-**Cycle file:** \`${cycle.filePath}\`
-**Branch:** ${fm.branch}
-
-**Objective:** ${definition.objective}
-
-**Acceptance Criteria:**
-${formatList(definition.criteria)}
-
-**Constraints:**
-${formatList(definition.constraints)}
-
-**Claimed Files (Scope):**
-${formatScope(definition.scope)}${forbiddenSection}${nonGoalsSection}${invariantsSection}${notesSection}
-
-## Rules
-
-- Touch ONLY the files listed in Claimed Files
+- Touch ONLY the files listed in Claimed Files for each cycle
 - Do NOT touch any Forbidden Paths
 - Do NOT implement any Non-Goals
 - Do NOT refactor, optimize, or add features beyond the criteria
 - Preserve all Invariants
-- Run existing tests if applicable
-- Commit all changes when done
-- Call submit_implementation(cycleId: "${fm.id}", comment: "...") with a brief summary${priorFeedback}`,
+
+---
+
+${cycleBlocks}`,
             },
           },
         ],
@@ -515,6 +460,7 @@ Present the summary below, then ask the human for their decision.${escalationNot
 ## What was built — Cycle ${fm.id}
 
 **Cycle file:** \`${cycle.filePath}\`
+**Branch:** ${fm.branch}
 **Objective:** ${definition?.objective ?? "(no definition)"}
 
 ## Reviewer Verdict
@@ -527,7 +473,7 @@ Present the summary below, then ask the human for their decision.${escalationNot
 1. Summarize the above in 2-3 plain-English sentences
 2. Ask the human: **"Do you approve this implementation? (yes / no)"**
 3. When human responds:
-   - **yes / approve** → call decide(cycleId: "${fm.id}", approved: true, feedback: "Approved.") and tell them: "Cycle complete! Use **#define** to start the next cycle."
+   - **yes / approve** → call decide(cycleId: "${fm.id}", approved: true, feedback: "Approved.") and tell them: "Cycle complete — branch will be merged to main. Use **#define** to start the next cycle."
    - **no / reject** → ask "What needs to change?" then call decide(cycleId: "${fm.id}", approved: false, feedback: <their reasons>) and tell them: "Cycle rejected and reopened for revision. Use **#define** to revise."
 
 Be concise. This is a decision point, not a discussion.`,

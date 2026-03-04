@@ -78,3 +78,44 @@ export function renameBranch(newName: string): string | null {
     return e instanceof Error ? e.message : String(e);
   }
 }
+
+/** Returns the name of the repo's primary branch ("main" or "master"). */
+export function getMainBranch(): string {
+  try {
+    execSync("git show-ref --verify --quiet refs/heads/main", { cwd: process.cwd() });
+    return "main";
+  } catch {
+    try {
+      execSync("git show-ref --verify --quiet refs/heads/master", { cwd: process.cwd() });
+      return "master";
+    } catch {
+      return "main"; // fallback
+    }
+  }
+}
+
+/**
+ * Checks out the main branch, merges `branchName` with --no-ff, then
+ * returns to the original branch. Non-fatal — returns error string or null.
+ */
+export function mergeBranchToMain(branchName: string, commitMessage: string): string | null {
+  const original = getCurrentBranch();
+  const main = getMainBranch();
+  try {
+    execSync(`git checkout ${main}`, { cwd: process.cwd() });
+    execSync(`git merge --no-ff ${branchName} -m ${JSON.stringify(commitMessage)}`, {
+      cwd: process.cwd(),
+    });
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message.split("\n")[0] : String(e);
+  } finally {
+    if (original && original !== main) {
+      try {
+        execSync(`git checkout ${original}`, { cwd: process.cwd() });
+      } catch {
+        // best effort
+      }
+    }
+  }
+}

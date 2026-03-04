@@ -41,10 +41,10 @@ export interface DecisionEntry {
 }
 
 export interface CycleFrontMatter {
-  id: string;       // "0001"
+  id: string;       // "2026-03-04" or "2026-03-04-2"
   slug: string;     // "undefined" or "add-jwt-auth"
   status: CycleStatus;
-  branch: string;   // "hal/0001-undefined"
+  branch: string;   // "hal/2026-03-04_add-jwt-auth"
   baseCommit: string | null;
   retryCount: number;
   startedAt: string;
@@ -63,15 +63,21 @@ export interface CycleData {
 // Utilities
 // ---------------------------------------------------------------------------
 
-export function slugify(text: string): string {
-  const slug = text
+const STOP_WORDS = new Set([
+  "a", "an", "the", "to", "for", "of", "in", "on", "at", "by", "with",
+  "and", "or", "is", "are", "was", "were", "be", "been", "that", "this",
+  "from", "into", "as", "it", "its", "so", "do", "not", "all", "up",
+]);
+
+/** Extract 3–5 meaningful words from text and join with hyphens. */
+export function slugify(text: string, maxWords = 5): string {
+  const words = text
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .slice(0, 50);
-  return slug || "undefined";
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 1 && !STOP_WORDS.has(w))
+    .slice(0, maxWords);
+  return words.join("-") || "undefined";
 }
 
 function bulletList(items: string[]): string {
@@ -92,23 +98,31 @@ function parseBullets(text: string): string[] {
 // File paths
 // ---------------------------------------------------------------------------
 
+/** File format: {id}_{slug}.md  — underscore separates date-id from slug */
 export function getCycleFilePath(id: string, slug: string): string {
-  return join(CYCLES_DIR, `${id}-${slug}.md`);
+  return join(CYCLES_DIR, `${id}_${slug}.md`);
 }
 
+/** Returns YYYY-MM-DD, or YYYY-MM-DD-2, -3 … if that date already has cycles. */
 export function getNextCycleId(): string {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   mkdirSync(CYCLES_DIR, { recursive: true });
-  const files = readdirSync(CYCLES_DIR).filter((f) => /^\d{4}-/.test(f));
-  if (files.length === 0) return "0001";
-  const nums = files.map((f) => parseInt(f.slice(0, 4), 10));
-  const max = Math.max(...nums);
-  return String(max + 1).padStart(4, "0");
+  const files = readdirSync(CYCLES_DIR).filter((f) => /^\d{4}-\d{2}-\d{2}/.test(f));
+  const todayFiles = files.filter((f) => f.startsWith(`${today}_`) || f.startsWith(`${today}-`));
+  if (todayFiles.length === 0) return today;
+  // Find highest sequence suffix for today
+  let maxSeq = 1;
+  for (const f of todayFiles) {
+    const m = f.match(new RegExp(`^${today}-(\\d+)_`));
+    if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+  }
+  return `${today}-${maxSeq + 1}`;
 }
 
 export function findCycleFile(id: string): string | null {
   mkdirSync(CYCLES_DIR, { recursive: true });
   const files = readdirSync(CYCLES_DIR).filter(
-    (f) => f.startsWith(`${id}-`) && f.endsWith(".md"),
+    (f) => f.startsWith(`${id}_`) && f.endsWith(".md"),
   );
   if (files.length === 0) return null;
   return join(CYCLES_DIR, files[0]);
@@ -377,7 +391,7 @@ export function renameCycleFile(data: CycleData, newSlug: string): CycleData {
     renameSync(data.filePath, newPath);
   }
   data.frontMatter.slug = newSlug;
-  data.frontMatter.branch = `hal/${data.frontMatter.id}-${newSlug}`;
+  data.frontMatter.branch = `hal/${data.frontMatter.id}_${newSlug}`;
   data.filePath = newPath;
   writeFileSync(data.filePath, formatCycleFile(data), "utf-8");
   return data;
@@ -386,7 +400,7 @@ export function renameCycleFile(data: CycleData, newSlug: string): CycleData {
 export function listCycles(): CycleData[] {
   mkdirSync(CYCLES_DIR, { recursive: true });
   return readdirSync(CYCLES_DIR)
-    .filter((f) => /^\d{4}-.*\.md$/.test(f))
+    .filter((f) => /^\d{4}-\d{2}-\d{2}.*_.*\.md$/.test(f))
     .sort()
     .map((f) => {
       try {
