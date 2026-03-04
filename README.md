@@ -130,7 +130,7 @@ DEFINING → IMPLEMENTING → REVIEWING → DECIDING → (next cycle)
 
 ### Stage 1 — Define
 
-Start a new cycle and describe your intent. HAL generates a complete Definition Artifact with scope, acceptance criteria, constraints, and forbidden paths. Edit the draft freely — it's plain markdown saved in `.agents/hal/`. When you're satisfied, say **"lock"** to seal it for implementation.
+Start a new cycle and describe your intent. HAL generates a complete Definition Artifact with scope, acceptance criteria, constraints, and forbidden paths. Edit the draft freely — it's plain markdown saved in `.engineering/`. When you're satisfied, say **"lock"** to seal it for implementation.
 
 **Example prompts:**
 
@@ -168,14 +168,17 @@ You make the final call. HAL presents a plain-English summary and asks for appro
 
 ## The Definition Artifact
 
-Each cycle lives in `.agents/hal/<NNNN>-<slug>.md`. A locked definition looks like this:
+Each cycle lives in `.engineering/YYYY-MM-DD_NN_slug.md` (e.g. `2026-03-04_01_add-rate-limiting.md`). A locked definition looks like this:
 
 ```markdown
 ---
-id: "0001"
+id: "2026-03-04_01"
 slug: add-rate-limiting
 status: IMPLEMENTING
-branch: hal/0001-add-rate-limiting
+branch: hal/2026-03-04_01_add-rate-limiting
+baseCommit: abc1234
+retryCount: 0
+startedAt: "2026-03-04T10:00:00.000Z"
 ---
 
 ## Objective
@@ -198,6 +201,9 @@ All API endpoints return HTTP 429 after more than 100 requests per minute from a
 ## Invariants
 - Existing middleware order is unchanged
 - All current tests continue to pass
+
+## Implementation Notes
+- (none)
 
 ## Forbidden Paths
 - src/core/
