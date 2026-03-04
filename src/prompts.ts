@@ -95,6 +95,8 @@ export function registerPrompts(server: Server): void {
               type: "text" as const,
               text: `You are HAL — Structured Agentic Coding Governor. Give the user a friendly, concise status report right now. Do not ask questions.
 
+Use Copilot Chat for DEFINE, REVIEW, and DECIDE stages (invoke \`/mcp.hal.define\`, \`/mcp.hal.review\`, \`/mcp.hal.decide\` inside GitHub Copilot Chat). Use the Claude terminal client for IMPLEMENT (for example: run \`claude mcp invoke /mcp.hal.implement\` after configuring your \`MCP_BASE_URL\` and credentials). See README.md for MCP configuration instructions for both clients.
+
 ## Addressing Rules
 
 - Always address the human as "Dave" in explicit addresses.
@@ -124,6 +126,8 @@ ${cyclesSummary}
 | \`#decide\`    | DECIDE      | Approve or reject the implementation      |
 
 **Tip:** Each command puts an agent in the right mode. Just follow the prompts.
+
+> **Clients:** Use **GitHub Copilot Chat** for \`#define\`, \`#review\`, and \`#decide\`. Use the **Claude terminal** for \`#implement\`. See \`README.md\` for configuration.
 ---
 
 Keep the total response short and scannable. No walls of text.`,

@@ -28,6 +28,45 @@ That's it. HAL will tell you your current status and exactly what to do next.
 
 ---
 
+## Which Client to Use
+
+HAL splits work across two AI clients to keep the implementation stage isolated from governance:
+
+| Stage | Command | Client |
+|---|---|---|
+| DEFINE | `/mcp.hal.define` | GitHub Copilot Chat |
+| IMPLEMENT | `/mcp.hal.implement` | **Claude terminal client** |
+| REVIEW | `/mcp.hal.review` | GitHub Copilot Chat |
+| DECIDE | `/mcp.hal.decide` | GitHub Copilot Chat |
+| Status | `/mcp.hal.hal` | Either |
+
+### GitHub Copilot Chat (DEFINE, REVIEW, DECIDE)
+
+HAL is pre-configured in `.vscode/mcp.json`. Open Copilot Chat in VSCode and type the commands directly:
+
+```
+/mcp.hal.define
+/mcp.hal.review
+/mcp.hal.decide
+```
+
+### Claude Terminal Client (IMPLEMENT)
+
+The Claude terminal client runs as a separate agentic session with shell and file system access. Set the following environment variables to connect it to the HAL MCP server:
+
+```bash
+export MCP_BASE_URL=http://localhost:<port>
+export MCP_API_KEY=<your-key>
+```
+
+Then invoke the implement stage:
+
+```
+claude mcp invoke /mcp.hal.implement
+```
+
+---
+
 ## Development Workflow
 
 To get auto-reload on code changes, run the TypeScript compiler in watch mode in a terminal:
@@ -105,15 +144,15 @@ The AI receives the locked definition and implements it exactly. It will:
 
 When finished, it calls `submit_implementation` automatically.
 
-**What good implementation prompts look like:**
+**Using the Claude terminal client:**
 
-No special prompt needed — just type `/mcp.hal.implement` and let the AI follow the locked definition.
-
-If you want to give context about the environment, say it before invoking `/mcp.hal.implement`:
+Use the **Claude terminal client** for this stage — not Copilot Chat. See [Which Client to Use](#which-client-to-use) for setup, then run:
 
 ```
-The test suite uses vitest. /mcp.hal.implement
+claude mcp invoke /mcp.hal.implement
 ```
+
+If you want to give context about the environment, say it before invoking the command.
 
 ### Stage 3 — REVIEW (`/mcp.hal.review`)
 
