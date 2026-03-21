@@ -3,7 +3,7 @@ import {
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { getActiveCycles, resolveCycle } from "./cycles.js";
+import { getActiveCycles, resolveCycle, matchesScope } from "./cycles.js";
 import { getChangedFiles, computeRollback, getCurrentBranch, getMainBranch } from "./git.js";
 import { MAX_RETRIES } from "./constants.js";
 
@@ -121,11 +121,11 @@ From the objective alone, generate all definition fields. Search the codebase to
 
 - **Acceptance Criteria** — specific, verifiable conditions for "done"
 - **Constraints** — hard limits (tech choices, compatibility, backwards-compat)
-- **Scope** — exact file paths that need to change (search the codebase)
+- **Scope** — exact file paths that need to change (search the codebase). Use explicit paths only — no glob patterns, no wildcards. Do NOT add parenthetical annotations like "(new)" or "(if needed)".
 - **Non-Goals** — related things explicitly out of scope
 - **Invariants** — what must remain true before and after
 - **Implementation Notes** — ordering/environment constraints only
-- **Forbidden Paths** — files must NOT touch (lock files, generated code, migrations)
+- **Forbidden Paths** — files must NOT touch (lock files, generated code, migrations). Only include paths that actually exist in the codebase — do not add hypothetical or non-existent paths.
 
 **Step 4 — Save the draft**
 
@@ -303,10 +303,10 @@ ${cycleBlocks}`,
 
       // Phase A — deterministic checks
       const changedFiles = getChangedFiles(fm.baseCommit);
-      const driftedFiles = changedFiles.filter((f) => !definition.scope.includes(f));
+      const driftedFiles = changedFiles.filter((f) => !matchesScope(f, definition.scope));
       const forbiddenViolations =
         definition.forbiddenPaths.length > 0
-          ? changedFiles.filter((f) => definition.forbiddenPaths.includes(f))
+          ? changedFiles.filter((f) => matchesScope(f, definition.forbiddenPaths))
           : [];
       const isDiffEmpty = changedFiles.length === 0 && fm.baseCommit !== null;
 
