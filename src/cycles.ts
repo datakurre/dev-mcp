@@ -45,6 +45,7 @@ export interface CycleFrontMatter {
   slug: string;     // "undefined" or "add-jwt-auth"
   status: CycleStatus;
   branch: string;   // "hal/2026-03-04_add-jwt-auth"
+  baseBranch: string; // "main" or "master"
   baseCommit: string | null;
   retryCount: number;
   startedAt: string;
@@ -146,6 +147,7 @@ function parseFrontMatter(content: string): CycleFrontMatter | null {
     slug: fm["slug"],
     status: fm["status"] as CycleStatus,
     branch: fm["branch"],
+    baseBranch: fm["baseBranch"] ?? "main",
     baseCommit: fm["baseCommit"] === "null" || !fm["baseCommit"] ? null : fm["baseCommit"],
     retryCount: parseInt(fm["retryCount"] ?? "0", 10),
     startedAt: fm["startedAt"] ?? new Date().toISOString(),
@@ -261,6 +263,7 @@ id: "${fm.id}"
 slug: ${fm.slug}
 status: ${fm.status}
 branch: ${fm.branch}
+baseBranch: ${fm.baseBranch}
 baseCommit: ${fm.baseCommit ?? "null"}
 retryCount: ${fm.retryCount}
 startedAt: "${fm.startedAt}"
@@ -343,6 +346,7 @@ ${bulletList(def?.forbiddenPaths ?? [])}`;
 export function createCycle(
   id: string,
   branch: string,
+  baseBranch: string,
   baseCommit: string | null,
 ): CycleData {
   const frontMatter: CycleFrontMatter = {
@@ -350,6 +354,7 @@ export function createCycle(
     slug: "undefined",
     status: "DEFINING",
     branch,
+    baseBranch,
     baseCommit,
     retryCount: 0,
     startedAt: new Date().toISOString(),

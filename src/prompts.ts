@@ -239,10 +239,11 @@ Always address the human as "Dave" in explicit addresses. When reporting an erro
 
 For each cycle below:
 1. Check out its branch (if not already on it)
-2. Implement exactly what the definition specifies
-3. Run existing tests if applicable
-4. Commit all changes
-5. Call submit_implementation(cycleId: "...", comment: "...") with a brief summary
+2. Call \`rebase_on_base_branch(cycleId: "...")\` to sync with the base branch and update baseCommit
+3. Implement exactly what the definition specifies
+4. Run existing tests if applicable
+5. Commit all changes
+6. Call submit_implementation(cycleId: "...", comment: "...") with a brief summary
 
 ## Implementation Rules
 

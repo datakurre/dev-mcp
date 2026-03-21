@@ -12,7 +12,7 @@ import {
   resolveCycle,
   listCycles,
 } from "./cycles.js";
-import { getHeadCommit, createBranch, renameBranch, getCurrentBranch, mergeBranchToMain } from "./git.js";
+import { getHeadCommit, createBranch, renameBranch, getCurrentBranch, mergeBranchToMain, rebaseBranch } from "./git.js";
 import { MAX_RETRIES } from "./constants.js";
 
 type ToolResult = { content: [{ type: "text"; text: string }]; isError?: true };
@@ -154,6 +154,21 @@ export function registerTools(server: Server): void {
         },
       },
       {
+        name: "rebase_on_base_branch",
+        description:
+          "Rebase the current cycle branch onto its baseBranch, then update baseCommit to the tip of baseBranch. Call this at the start of every implementation before touching any files.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            cycleId: {
+              type: "string",
+              description: "Cycle ID. Optional if only one active cycle.",
+            },
+          },
+          required: [],
+        },
+      },
+      {
         name: "decide",
         description:
           "Human final sign-off. Appends a Decision section to the cycle file. approved=true → DECIDED (cycle complete). approved=false → DEFINING (reopen for revision).",
@@ -204,6 +219,7 @@ export function registerTools(server: Server): void {
         String(a.verdict) as "APPROVED" | "BLOCKED",
         String(a.feedback),
       );
+    if (name === "rebase_on_base_branch") return rebaseOnBaseBranch(cycleId);
     if (name === "decide") return decide(cycleId, Boolean(a.approved), String(a.feedback));
 
     return err(`Unknown tool: ${name}`);
@@ -227,7 +243,7 @@ function startCycle(intent: string): ToolResult {
   const id = getNextCycleId();
   const branchName = `hal/${id}_undefined`;
   const baseCommit = getHeadCommit();
-  createCycle(id, branchName, baseCommit);
+  createCycle(id, branchName, mainBranch, baseCommit);
   const branchErr = createBranch(branchName);
   const branchNote = branchErr
     ? `\n⚠️  Branch creation failed (${branchErr.split("\n")[0]}). Continuing without a dedicated branch.`
@@ -466,5 +482,31 @@ function decide(cycleId: string | undefined, approved: boolean, feedback: string
       `Feedback: ${feedback}` +
       warningLine +
       `\n\nDefinition cleared. Use **#define** to revise and re-lock.`,
+  );
+}
+
+function rebaseOnBaseBranch(cycleId: string | undefined): ToolResult {
+  const resolved = resolveCycle(cycleId, "IMPLEMENTING");
+  if ("error" in resolved) return err(resolved.error);
+  const { cycle, warning } = resolved;
+
+  const { baseBranch } = cycle.frontMatter;
+  const { newBaseCommit, error } = rebaseBranch(baseBranch);
+
+  if (error) {
+    return err(
+      `Rebase onto "${baseBranch}" failed: ${error}\n` +
+        `Resolve conflicts manually (git rebase --continue / --abort), then proceed.`,
+    );
+  }
+
+  cycle.frontMatter.baseCommit = newBaseCommit;
+  saveCycle(cycle);
+
+  const warningLine = warning ? `\n⚠️  ${warning}` : "";
+  return ok(
+    `Rebased onto ${baseBranch}. New baseCommit: ${newBaseCommit}` +
+      warningLine +
+      `\n\nProceed with implementation.`,
   );
 }

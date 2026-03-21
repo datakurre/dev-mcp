@@ -94,8 +94,19 @@ export function getMainBranch(): string {
   }
 }
 
+/** Deletes a local branch (safe delete — only if fully merged). Returns error string or null. */
+export function deleteBranch(name: string): string | null {
+  try {
+    execSync(`git branch -d ${name}`, { cwd: process.cwd() });
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message.split("\n")[0] : String(e);
+  }
+}
+
 /**
  * Checks out the main branch and merges `branchName` with --no-ff.
+ * Deletes the branch after a successful merge.
  * Stays on main after merge. Non-fatal — returns error string or null.
  */
 export function mergeBranchToMain(branchName: string, commitMessage: string): string | null {
@@ -105,8 +116,28 @@ export function mergeBranchToMain(branchName: string, commitMessage: string): st
     execSync(`git merge --no-ff ${branchName} -m ${JSON.stringify(commitMessage)}`, {
       cwd: process.cwd(),
     });
+    deleteBranch(branchName); // best-effort; ignore error
     return null;
   } catch (e) {
     return e instanceof Error ? e.message.split("\n")[0] : String(e);
+  }
+}
+
+/**
+ * Rebases the current branch onto `baseBranch`.
+ * Returns the HEAD commit of `baseBranch` (new baseCommit) on success, or an error string.
+ */
+export function rebaseBranch(baseBranch: string): { newBaseCommit: string | null; error: string | null } {
+  try {
+    const newBaseCommit = execSync(`git rev-parse ${baseBranch}`, { cwd: process.cwd() })
+      .toString()
+      .trim();
+    execSync(`git rebase ${baseBranch}`, { cwd: process.cwd() });
+    return { newBaseCommit, error: null };
+  } catch (e) {
+    try {
+      execSync("git rebase --abort", { cwd: process.cwd() });
+    } catch {}
+    return { newBaseCommit: null, error: e instanceof Error ? e.message.split("\n")[0] : String(e) };
   }
 }
