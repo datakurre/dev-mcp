@@ -2,15 +2,9 @@
   "servers": {
     "hal": {
       "type": "stdio",
-      "command": "${workspaceFolder}/node_modules/.bin/nodemon",
+      "command": "node",
       "args": [
-        "--quiet",
-        "--watch",
-        "${workspaceFolder}/dist",
-        "--ext",
-        "js",
-        "--exec",
-        "node ${workspaceFolder}/dist/index.js"
+        "dist/index.js"
       ]
     }
   }
