@@ -38,15 +38,21 @@ export function buildImplementBatchClaudePrompt(): {
     };
   }
 
-  const commands = implementing
+  const cycleInstructions = implementing
     .map((cycle) => {
-      const prompt = buildCycleImplementPrompt(cycle).replace(/'/g, `'\\''`);
+      const prompt = buildCycleImplementPrompt(cycle);
+      const promptPath = `/tmp/cycle_${cycle.frontMatter.id}_prompt.txt`;
       return (
-        `# Cycle ${cycle.frontMatter.id} — ${cycle.definition?.objective ?? "(no definition)"}\n` +
-        `claude --dangerously-skip-permissions --print $'${prompt}'`
+        `### Cycle ${cycle.frontMatter.id} — ${cycle.definition?.objective ?? "(no definition)"}\n\n` +
+        `**Step 1** — Use the \`create_file\` tool to write the following content to \`${promptPath}\`:\n\n` +
+        "```\n" + prompt + "\n```\n\n" +
+        `**Step 2** — Run in terminal:\n\n` +
+        "```bash\n" +
+        `claude --dangerously-skip-permissions --print @${promptPath}\n` +
+        "```"
       );
     })
-    .join("\n\n");
+    .join("\n\n---\n\n");
 
   const cycleIds = implementing.map((c) => c.frontMatter.id).join(", ");
 
@@ -59,21 +65,20 @@ export function buildImplementBatchClaudePrompt(): {
           type: "text" as const,
           text: `You are the Orchestrator. You have ${implementing.length} cycle(s) to dispatch for implementation using the \`claude\` CLI: **${cycleIds}**.
 
-**Do NOT implement anything yourself.** Your sole job is to run the commands below — one per cycle, sequentially — and report the output.
+**Do NOT implement anything yourself.** Your sole job is to execute the steps below — one cycle at a time, sequentially — and report the output.
 
-For each command:
-1. Run the \`claude\` command exactly as shown
-2. Wait for it to complete
-3. Report whether it succeeded or failed
-4. Move to the next cycle
+For each cycle:
+1. Use the \`create_file\` tool to write the prompt to the specified temp file path
+2. Run the \`claude\` command shown (it reads the prompt via \`@file\`)
+3. Wait for it to complete
+4. Report whether it succeeded or failed
+5. Move to the next cycle
 
-## Commands to execute (run sequentially)
+## Cycles to execute (run sequentially)
 
-\`\`\`bash
-${commands}
-\`\`\`
+${cycleInstructions}
 
-After all commands complete, summarise which cycles succeeded and which (if any) failed, then tell the user: "Implementation complete. Use **#review** to review each cycle."`,
+After all cycles complete, summarise which cycles succeeded and which (if any) failed, then tell the user: "Implementation complete. Use **#review** to review each cycle."`,
         },
       },
     ],
