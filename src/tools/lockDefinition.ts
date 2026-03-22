@@ -1,6 +1,6 @@
 import { ok, err, ToolResult } from "./result.js";
 import { resolveCycle, saveCycle, renameCycleFile, slugify, loadCycle } from "../cycles.js";
-import { checkoutBranch, renameBranch } from "../git.js";
+import { checkoutBranch, renameBranch, getMainBranch } from "../git.js";
 
 export function lockDefinition(cycleId: string | undefined, shortname?: string): ToolResult {
   const resolved = resolveCycle(cycleId, "DEFINING");
@@ -52,12 +52,17 @@ export function lockDefinition(cycleId: string | undefined, shortname?: string):
         .replace(/-+/g, "-")
         .slice(0, 60)
     : slugify(definition.objective);
+  const oldBranch = cycle.frontMatter.branch;
   cycle = renameCycleFile(cycle, newSlug);
 
   // Rename git branch — must be on the cycle branch for `git branch -m` to work
   const newBranch = `hal/${cycle.frontMatter.id}_${newSlug}`;
-  const checkoutErr = checkoutBranch(cycle.frontMatter.branch);
+  const checkoutErr = checkoutBranch(oldBranch);
   const branchErr = checkoutErr ?? renameBranch(newBranch);
+
+  // Return to main branch after rename
+  const mainBranch = getMainBranch();
+  const returnErr = checkoutBranch(mainBranch);
 
   // Update status
   cycle.frontMatter.status = "IMPLEMENTING";
@@ -65,7 +70,9 @@ export function lockDefinition(cycleId: string | undefined, shortname?: string):
 
   const branchNote = branchErr
     ? `\n⚠️  Branch rename failed: ${branchErr.split("\n")[0]}`
-    : `\nBranch: ${newBranch}`;
+    : returnErr
+      ? `\nBranch: ${newBranch}\n⚠️  Could not return to ${mainBranch}: ${returnErr.split("\n")[0]}`
+      : `\nBranch: ${newBranch} (now on ${mainBranch})`;
   const warningLine = warning ? `\n⚠️  ${warning}` : "";
 
   return ok(

@@ -63,7 +63,8 @@ export function buildCycleImplementPrompt(cycle: CycleData): string {
     `3. Implement exactly what the definition specifies\n` +
     `4. Run existing tests if applicable\n` +
     `5. Commit all changes\n` +
-    `6. Call \`submit_implementation(cycleId: "${fm.id}", comment: "...")\` via the HAL MCP tool\n\n` +
+    `6. Call \`submit_implementation(cycleId: "${fm.id}", comment: "...")\` via the HAL MCP tool\n` +
+    `7. Check out the main branch to return to it: git checkout ${fm.baseBranch ?? "main"}\n\n` +
     `## Implementation Rules\n\n` +
     `- Touch ONLY the files listed in Claimed Files\n` +
     `- Do NOT touch any Forbidden Paths\n` +
