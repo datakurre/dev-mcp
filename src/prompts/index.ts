@@ -6,6 +6,8 @@ import {
 import { buildDefinePrompt } from "./define.js";
 import { buildDefineBatchPrompt } from "./defineBatch.js";
 import { buildImplementPrompt } from "./implement.js";
+import { buildImplementBatchClaudePrompt } from "./implementBatchClaude.js";
+import { buildImplementBatchCopilotPrompt } from "./implementBatchCopilot.js";
 import { buildReviewPrompt } from "./review.js";
 import { buildDecidePrompt } from "./decide.js";
 
@@ -26,6 +28,16 @@ export function registerPrompts(server: Server): void {
         name: "implement",
         description:
           "IMPLEMENT stage: execute all locked definitions and commit the results.",
+      },
+      {
+        name: "implement_batch_claude",
+        description:
+          "IMPLEMENT BATCH (claude): dispatch each IMPLEMENTING cycle to the local claude CLI — one independent AI agent per cycle, running sequentially.",
+      },
+      {
+        name: "implement_batch_copilot",
+        description:
+          "IMPLEMENT BATCH (copilot): dispatch each IMPLEMENTING cycle to the local copilot CLI — one independent AI agent per cycle, running sequentially.",
       },
       {
         name: "review",
@@ -64,6 +76,10 @@ export function registerPrompts(server: Server): void {
         return buildDefineBatchPrompt();
       case "implement":
         return buildImplementPrompt();
+      case "implement_batch_claude":
+        return buildImplementBatchClaudePrompt();
+      case "implement_batch_copilot":
+        return buildImplementBatchCopilotPrompt();
       case "review": {
         const cid = (request.params.arguments as Record<string, string> | undefined)?.cycleId;
         return buildReviewPrompt(cid);
