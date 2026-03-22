@@ -1,6 +1,6 @@
 import { ok, err, ToolResult } from "./result.js";
 import { resolveCycle, saveCycle, listCycles } from "../cycles.js";
-import { mergeBranchToMain } from "../git.js";
+import { commitFile, mergeBranchToMain } from "../git.js";
 
 export function decide(
   cycleId: string | undefined,
@@ -23,6 +23,13 @@ export function decide(
     saveCycle(cycle);
     const total = listCycles().filter((c) => c.frontMatter.status === "DECIDED").length;
 
+    // Commit the approved engineering doc onto the cycle branch before merging
+    const commitMsg = `docs: approve cycle ${cycle.frontMatter.id} — ${cycle.definition?.objective ?? cycle.frontMatter.slug}`;
+    const commitErr = commitFile(cycle.filePath, commitMsg);
+    const commitNote = commitErr
+      ? `\n⚠️  Could not commit cycle doc: ${commitErr}`
+      : `\nCommitted approved cycle doc.`;
+
     const mergeMsg = `Merge ${cycle.frontMatter.branch}: ${cycle.definition?.objective ?? cycle.frontMatter.slug}`;
     const mergeErr = mergeBranchToMain(cycle.frontMatter.branch, mergeMsg);
     const mergeNote = mergeErr
@@ -32,6 +39,7 @@ export function decide(
     return ok(
       `Cycle ${cycle.frontMatter.id} APPROVED. Status: DECIDED\n\n` +
         `Feedback: ${feedback}` +
+        commitNote +
         mergeNote +
         warningLine +
         `\n\nCycle recorded (${total} completed total). Ready for next **#define**.`,

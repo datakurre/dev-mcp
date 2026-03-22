@@ -78,6 +78,20 @@ export function renameBranch(newName: string): string | null {
   }
 }
 
+/**
+ * Stages a single file and creates a commit with the given message.
+ * Returns an error string on failure, null on success.
+ */
+export function commitFile(filePath: string, message: string): string | null {
+  try {
+    execSync(`git add ${JSON.stringify(filePath)}`, { cwd: process.cwd() });
+    execSync(`git commit -m ${JSON.stringify(message)}`, { cwd: process.cwd() });
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message.split("\n")[0] : String(e);
+  }
+}
+
 /** Deletes a local branch (safe delete — only if fully merged). Returns error string or null. */
 export function deleteBranch(name: string): string | null {
   try {
