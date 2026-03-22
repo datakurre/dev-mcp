@@ -21,6 +21,12 @@ export function registerResources(server: Server): void {
         description: "Full data for all cycles (active and completed)",
         mimeType: "application/json",
       },
+      {
+        uri: "hal://cycle/{id}",
+        name: "Cycle by ID",
+        description: "Full data for a single cycle identified by its ID (e.g. hal://cycle/2026-03-04_01)",
+        mimeType: "application/json",
+      },
     ],
   }));
 
@@ -47,8 +53,8 @@ export function registerResources(server: Server): void {
       };
     }
 
-    // hal://cycle/{id}
-    const cycleMatch = uri.match(/^hal:\/\/cycle\/(\d{4})$/);
+    // hal://cycle/{id}  e.g. hal://cycle/2026-03-04_01
+    const cycleMatch = uri.match(/^hal:\/\/cycle\/(.+)$/);
     if (cycleMatch) {
       const id = cycleMatch[1];
       const cycle = loadCycle(id);
