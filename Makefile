@@ -16,3 +16,11 @@ devenv.local.nix:
 
 devenv.local.yaml:
 	cp devenv.local.yaml.example devenv.local.yaml
+
+.PHONY: build
+build: ## Build the project (for development)
+	npm run build
+
+.PHONY: watch
+watch: ## Build the project in watch mode (for development)
+	npm run build:watch
