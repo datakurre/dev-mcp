@@ -1,5 +1,5 @@
 import { ok, err, ToolResult } from "./result.js";
-import { resolveCycle, saveCycle, renameCycleFile, slugify } from "../cycles.js";
+import { resolveCycle, saveCycle, renameCycleFile, slugify, loadCycle } from "../cycles.js";
 import { checkoutBranch, renameBranch } from "../git.js";
 
 export function lockDefinition(cycleId: string | undefined, shortname?: string): ToolResult {
@@ -28,6 +28,20 @@ export function lockDefinition(cycleId: string | undefined, shortname?: string):
   }
   if (definition.scope.length === 0) {
     return err(`Definition is missing Scope (files). Please edit the file and try again.`);
+  }
+
+  // Check dependsOn constraint
+  if (cycle.frontMatter.dependsOn) {
+    const predecessor = loadCycle(cycle.frontMatter.dependsOn);
+    if (!predecessor) {
+      return err(`This cycle depends on cycle ${cycle.frontMatter.dependsOn}, which could not be found.`);
+    }
+    if (predecessor.frontMatter.status !== "DECIDED") {
+      return err(
+        `This cycle depends on cycle ${cycle.frontMatter.dependsOn} ("${predecessor.definition?.objective ?? predecessor.frontMatter.slug}"), ` +
+        `which is currently ${predecessor.frontMatter.status}. It must be DECIDED before this cycle can be locked.`,
+      );
+    }
   }
 
   // Use AI-provided shortname if given, otherwise derive from objective (3-5 words)

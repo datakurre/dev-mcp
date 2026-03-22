@@ -31,11 +31,25 @@ export function registerPrompts(server: Server): void {
         name: "review",
         description:
           "REVIEW stage: independently verify the implementation against the definition and produce a verdict.",
+        arguments: [
+          {
+            name: "cycleId",
+            description: "Cycle ID to review (e.g. '2026-03-04_01'). Optional if only one cycle is in REVIEWING state.",
+            required: false,
+          },
+        ],
       },
       {
         name: "decide",
         description:
           "DECIDE stage: human final approval — approve to complete the cycle or reject to revise the definition.",
+        arguments: [
+          {
+            name: "cycleId",
+            description: "Cycle ID to decide (e.g. '2026-03-04_01'). Optional if only one cycle is in DECIDING state.",
+            required: false,
+          },
+        ],
       },
     ],
   }));
@@ -50,10 +64,14 @@ export function registerPrompts(server: Server): void {
         return buildDefineBatchPrompt();
       case "implement":
         return buildImplementPrompt();
-      case "review":
-        return buildReviewPrompt();
-      case "decide":
-        return buildDecidePrompt();
+      case "review": {
+        const cid = (request.params.arguments as Record<string, string> | undefined)?.cycleId;
+        return buildReviewPrompt(cid);
+      }
+      case "decide": {
+        const cid = (request.params.arguments as Record<string, string> | undefined)?.cycleId;
+        return buildDecidePrompt(cid);
+      }
       default:
         throw new Error(`Unknown prompt: ${name}`);
     }

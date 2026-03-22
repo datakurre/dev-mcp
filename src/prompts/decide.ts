@@ -1,11 +1,11 @@
 import { resolveCycle } from "../cycles.js";
 import { MAX_RETRIES } from "../constants.js";
 
-export function buildDecidePrompt(): {
+export function buildDecidePrompt(cycleId?: string): {
   description: string;
   messages: Array<{ role: "user"; content: { type: "text"; text: string } }>;
 } {
-  const resolved = resolveCycle(undefined, "DECIDING");
+  const resolved = resolveCycle(cycleId, "DECIDING");
   if ("error" in resolved) {
     return {
       description: "DECIDE stage — error",

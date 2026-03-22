@@ -11,6 +11,7 @@ export function saveDefinitionDraft(
   invariants: string[],
   implementationNotes: string[],
   forbiddenPaths: string[],
+  dependsOn?: string,
 ): ToolResult {
   const resolved = resolveCycle(cycleId, "DEFINING");
   if ("error" in resolved) return err(resolved.error);
@@ -26,6 +27,7 @@ export function saveDefinitionDraft(
     implementationNotes,
     forbiddenPaths,
   };
+  if (dependsOn) cycle.frontMatter.dependsOn = dependsOn;
   saveCycle(cycle);
 
   const warningLine = warning ? `\n⚠️  ${warning}` : "";

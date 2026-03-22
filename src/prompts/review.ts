@@ -1,13 +1,13 @@
 import { resolveCycle, matchesScope } from "../cycles.js";
-import { getChangedFiles, computeRollback } from "../git.js";
+import { getChangedFiles, computeRollback, getCurrentBranch, checkoutBranch, getBranchCommitCount } from "../git.js";
 import { MAX_RETRIES } from "../constants.js";
 import { formatList, formatScope } from "./helpers.js";
 
-export function buildReviewPrompt(): {
+export function buildReviewPrompt(cycleId?: string): {
   description: string;
   messages: Array<{ role: "user"; content: { type: "text"; text: string } }>;
 } {
-  const resolved = resolveCycle(undefined, "REVIEWING");
+  const resolved = resolveCycle(cycleId, "REVIEWING");
   if ("error" in resolved) {
     return {
       description: "REVIEW stage — error",
@@ -42,6 +42,16 @@ export function buildReviewPrompt(): {
 
   const lastImpl = cycle.implementations[cycle.implementations.length - 1];
 
+  // Phase A — ensure we are on the cycle's branch so getChangedFiles is accurate
+  const originalBranch = getCurrentBranch();
+  let branchSwitchNote = "";
+  if (originalBranch !== fm.branch) {
+    const switchErr = checkoutBranch(fm.branch);
+    if (switchErr) {
+      branchSwitchNote = `\n⚠️  Could not switch to cycle branch "${fm.branch}": ${switchErr}. Changed-file diff may be inaccurate.`;
+    }
+  }
+
   // Phase A — deterministic checks
   const changedFiles = getChangedFiles(fm.baseCommit);
   const driftedFiles = changedFiles.filter((f) => !matchesScope(f, definition.scope));
@@ -51,12 +61,19 @@ export function buildReviewPrompt(): {
       : [];
   const isDiffEmpty = changedFiles.length === 0 && fm.baseCommit !== null;
 
+  // Also check the cycle branch itself has commits above the base
+  const branchCommitCount =
+    fm.baseCommit !== null ? getBranchCommitCount(fm.baseCommit, fm.branch) : null;
+
   let phaseAResult: string;
   let phaseABlocked = false;
 
   if (isDiffEmpty) {
     phaseABlocked = true;
     phaseAResult = `PHASE A RESULT: BLOCKED\nReason: No files changed relative to baseline — diff is empty.`;
+  } else if (branchCommitCount !== null && branchCommitCount === 0) {
+    phaseABlocked = true;
+    phaseAResult = `PHASE A RESULT: BLOCKED\nReason: Cycle branch "${fm.branch}" has no commits above baseCommit ${fm.baseCommit} — implementation may not have been committed to the correct branch.`;
   } else if (forbiddenViolations.length > 0) {
     phaseABlocked = true;
     phaseAResult =
@@ -80,6 +97,11 @@ export function buildReviewPrompt(): {
       changedFiles.map((f) => `  - ${f}`).join("\n");
   }
 
+  // Restore original branch after computing diff
+  if (originalBranch && originalBranch !== fm.branch) {
+    checkoutBranch(originalBranch);
+  }
+
   const phaseAInstruction = phaseABlocked
     ? `\n⛔ PHASE A BLOCKED. Call submit_review(cycleId: "${fm.id}", verdict: "BLOCKED", feedback: "...") citing the violation above. Do NOT proceed to Phase B.`
     : "";
@@ -97,6 +119,7 @@ export function buildReviewPrompt(): {
       : "";
 
   const warningNote = warning ? `\n\n⚠️  ${warning}` : "";
+  const branchNote = branchSwitchNote;
 
   return {
     description: "REVIEW stage — Independent Reviewer Agent",
@@ -110,7 +133,7 @@ export function buildReviewPrompt(): {
 Always address the human as "Dave" in explicit addresses. When reporting an error, begin with: "I'm sorry, Dave." or "I'm sorry, Dave. I'm afraid I can't do that."
 
 When done, call submit_review(cycleId: "${fm.id}", verdict: "APPROVED"|"BLOCKED", feedback: "..."). Then tell the user: "Review submitted. Use **#decide** to make the final approval."
-${warningNote}
+${warningNote}${branchNote}
 
 ## Original Definition — Cycle ${fm.id}
 

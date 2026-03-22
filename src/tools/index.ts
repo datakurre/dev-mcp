@@ -100,6 +100,7 @@ export function registerTools(server: Server): void {
           (a.invariants as string[] | undefined) ?? [],
           (a.implementationNotes as string[] | undefined) ?? [],
           (a.forbiddenPaths as string[] | undefined) ?? [],
+          a.dependsOn ? String(a.dependsOn) : undefined,
         );
 
       case "lock_definition":

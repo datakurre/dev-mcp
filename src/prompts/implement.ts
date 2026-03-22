@@ -76,6 +76,13 @@ export function buildImplementPrompt(): {
 
   const cycleIds = implementing.map((c) => c.frontMatter.id).join(", ");
 
+  const multiCycleWarning =
+    implementing.length > 1
+      ? `\n> ⚠️  **Multiple cycles are IMPLEMENTING (${implementing.length} total: ${cycleIds}).** Implement them SEQUENTIALLY — one branch at a time. For each cycle: checkout its branch, implement, commit, call submit_implementation(), then move to the next. Do NOT work on two branches simultaneously.
+
+`
+      : "";
+
   return {
     description: "IMPLEMENT stage — Implementer Agent",
     messages: [
@@ -84,7 +91,7 @@ export function buildImplementPrompt(): {
         content: {
           type: "text" as const,
           text: `You are the Implementer. You have ${implementing.length} cycle(s) ready to implement: **${cycleIds}**.
-
+${multiCycleWarning}
 Execute each Definition Artifact exactly. Do not interpret, extend, or improve beyond what is specified.
 
 Always address the human as "Dave" in explicit addresses. When reporting an error, begin with: "I'm sorry, Dave." or "I'm sorry, Dave. I'm afraid I can't do that."

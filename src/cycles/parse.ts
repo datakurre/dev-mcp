@@ -31,6 +31,7 @@ function parseFrontMatter(content: string): CycleFrontMatter | null {
     baseCommit: fm["baseCommit"] === "null" || !fm["baseCommit"] ? null : fm["baseCommit"],
     retryCount: parseInt(fm["retryCount"] ?? "0", 10),
     startedAt: fm["startedAt"] ?? new Date().toISOString(),
+    dependsOn: fm["dependsOn"] ?? undefined,
   };
 }
 

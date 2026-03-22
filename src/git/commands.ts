@@ -91,6 +91,23 @@ export function checkoutBranch(name: string): string | null {
   }
 }
 
+/**
+ * Returns the number of commits on `branch` that are not reachable from `baseCommit`.
+ * Returns 0 on any error (e.g. branch doesn't exist yet).
+ */
+export function getBranchCommitCount(baseCommit: string, branch: string): number {
+  try {
+    const out = execSync(`git rev-list --count ${baseCommit}..${branch}`, {
+      cwd: process.cwd(),
+    })
+      .toString()
+      .trim();
+    return parseInt(out, 10) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 /** Renames the current branch in-place. Returns error message on failure, null on success. */
 export function renameBranch(newName: string): string | null {
   try {

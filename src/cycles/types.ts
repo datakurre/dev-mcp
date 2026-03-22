@@ -41,6 +41,7 @@ export interface CycleFrontMatter {
   baseCommit: string | null;
   retryCount: number;
   startedAt: string;
+  dependsOn?: string; // optional cycle ID that must be DECIDED before this one can be locked
 }
 
 export interface CycleData {

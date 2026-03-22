@@ -67,6 +67,11 @@ export const saveDefinitionDraftSchema = {
       items: { type: "string" },
       description: "File paths the implementation must not touch",
     },
+    dependsOn: {
+      type: "string",
+      title: "Depends On",
+      description: "Optional cycle ID that must be DECIDED before this cycle can be locked for implementation",
+    },
   },
   required: ["objective", "criteria", "constraints", "scope"],
 };

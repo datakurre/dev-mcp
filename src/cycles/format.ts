@@ -10,7 +10,7 @@ branch: ${fm.branch}
 baseBranch: ${fm.baseBranch}
 baseCommit: ${fm.baseCommit ?? "null"}
 retryCount: ${fm.retryCount}
-startedAt: "${fm.startedAt}"
+startedAt: "${fm.startedAt}"${fm.dependsOn ? `\ndependsOn: ${fm.dependsOn}` : ""}
 ---`;
 }
 
