@@ -6,13 +6,12 @@
       "podman"
       "vscode"
     ];
-    devcontainer.networkMode = "host";
     devcontainer.settings.customizations.vscode.extensions = [
       "anthropic.claude-code"
       "jnoortheen.nix-ide"
       "GitHub.copilot"
       "GitHub.copilot-chat"
-      "mkhl.direnv"
+      "datakurre.devenv"
       "vscodevim.vim"
     ];
   };

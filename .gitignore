@@ -15,4 +15,4 @@ node_modules
 dist/
 
 # agents
-reference/
+.claude
