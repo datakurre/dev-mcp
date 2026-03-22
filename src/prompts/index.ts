@@ -4,6 +4,7 @@ import {
   GetPromptRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { buildDefinePrompt } from "./define.js";
+import { buildDefineBatchPrompt } from "./defineBatch.js";
 import { buildImplementPrompt } from "./implement.js";
 import { buildReviewPrompt } from "./review.js";
 import { buildDecidePrompt } from "./decide.js";
@@ -15,6 +16,11 @@ export function registerPrompts(server: Server): void {
         name: "define",
         description:
           "DEFINE stage: receive the objective, generate a complete Definition Artifact, save it for review before locking.",
+      },
+      {
+        name: "define_batch",
+        description:
+          "DEFINE BATCH stage: receive a newline-separated list of objectives and generate one Definition Artifact per objective, saving a draft .engineering doc for each.",
       },
       {
         name: "implement",
@@ -40,6 +46,8 @@ export function registerPrompts(server: Server): void {
     switch (name) {
       case "define":
         return buildDefinePrompt();
+      case "define_batch":
+        return buildDefineBatchPrompt();
       case "implement":
         return buildImplementPrompt();
       case "review":

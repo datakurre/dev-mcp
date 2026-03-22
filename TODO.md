@@ -1,67 +1,61 @@
-# Refactoring TODO
+# TODO — Multi-cycle concurrency improvements
 
-Suggested refactorings to follow MCP best practices and split code into single-purpose files.
-
----
-
-## 1 — Split `cycles.ts` into focused modules
-
-`cycles.ts` is ~500 lines and owns types, parsing, formatting, file I/O, and cycle resolution.
-Each concern belongs in its own file under `src/cycles/`.
-
-- [x] Create `src/cycles/types.ts` — move all TypeScript interfaces and type aliases (`CycleStatus`, `Verdict`, `CycleDefinition`, `ImplementationEntry`, `ReviewEntry`, `DecisionEntry`, `CycleFrontMatter`, `CycleData`)
-- [x] Create `src/cycles/utils.ts` — move pure helpers: `slugify`, `parseBullets`, `bulletList`, `globToRegex`, `matchesScope`
-- [x] Create `src/cycles/parse.ts` — move all parsing functions: `parseFrontMatter`, `parseSections`, `parseImplementationSection`, `parseReviewSection`, `parseDecisionSection`, `parseCycleFile`
-- [x] Create `src/cycles/format.ts` — move `formatFrontMatter` and `formatCycleFile`
-- [x] Create `src/cycles/store.ts` — move file-system operations: `getCycleFilePath`, `getNextCycleId`, `findCycleFile`, `createCycle`, `loadCycle`, `saveCycle`, `renameCycleFile`, `listCycles`, `getActiveCycles`
-- [x] Create `src/cycles/resolve.ts` — move `resolveCycle` and its `ResolveResult` type
-- [x] Create `src/cycles/index.ts` — barrel that re-exports everything public from the modules above, keeping all existing import paths working
+Actionable tasks derived from the concurrency analysis. Ordered by impact / dependency.
 
 ---
 
-## 2 — Split `tools.ts` into one file per tool
+## 1 — Add `cycleId` argument to `#review` and `#decide` prompts
 
-`tools.ts` mixes the MCP registration layer (schemas + dispatcher) with seven distinct tool implementations.
+The `#review` and `#decide` prompts currently hard-pick the first matching cycle.
+MCP prompts support an `arguments` field; exposing `cycleId` on both removes ambiguity entirely.
 
-- [x] Create `src/tools/result.ts` — extract the shared `ToolResult` type and the `ok` / `err` helper functions used by all tools
-- [x] Create `src/tools/schemas.ts` — extract all `inputSchema` JSON objects as named, typed constants (one export per tool), so schemas are defined once and reused by both the registration handler and any validators
-- [x] Create `src/tools/startCycle.ts` — move `startCycle` implementation
-- [x] Create `src/tools/saveDefinitionDraft.ts` — move `saveDefinitionDraft` implementation
-- [x] Create `src/tools/lockDefinition.ts` — move `lockDefinition` implementation
-- [x] Create `src/tools/submitImplementation.ts` — move `submitImplementation` implementation
-- [x] Create `src/tools/submitReview.ts` — move `submitReview` implementation
-- [x] Create `src/tools/rebaseOnBaseBranch.ts` — move `rebaseOnBaseBranch` implementation
-- [x] Create `src/tools/decide.ts` — move `decide` implementation
-- [x] Reduce `src/tools/index.ts` (current `tools.ts`) to only the MCP registration: `ListToolsRequestSchema` handler (imports schemas from `schemas.ts`) and the `CallToolRequestSchema` dispatcher (imports tool functions)
+- [ ] Add `arguments` array to the `review` and `decide` prompt descriptors in `src/prompts/index.ts` (`ListPromptsRequestSchema` handler), each with one optional `cycleId: string` argument
+- [ ] Update `buildReviewPrompt()` in `src/prompts/review.ts` to accept an optional `cycleId` parameter and pass it to `resolveCycle(cycleId, "REVIEWING")`
+- [ ] Update `buildDecidePrompt()` in `src/prompts/decide.ts` to accept an optional `cycleId` parameter and pass it to `resolveCycle(cycleId, "DECIDING")`
+- [ ] Update the `GetPromptRequestSchema` dispatcher in `src/prompts/index.ts` to extract `request.params.arguments?.cycleId` and forward it to each builder
 
 ---
 
-## 3 — Split `prompts.ts` into one file per prompt
+## 2 — Make review phase A branch-safe
 
-`prompts.ts` is ~500 lines of inline template strings. Each stage prompt is an independent concern.
+`getChangedFiles` is called relative to HEAD, but the reviewer may not be on the cycle's branch.
+The review prompt should explicitly check out the cycle branch before computing the diff.
 
-- [x] Create `src/prompts/define.ts` — move the `define` prompt builder (all context computation + message assembly)
-- [x] Create `src/prompts/implement.ts` — move the `implement` prompt builder
-- [x] Create `src/prompts/review.ts` — move the `review` prompt builder (Phase A pre-computation, rollback plan, etc.)
-- [x] Create `src/prompts/decide.ts` — move the `decide` prompt builder
-- [x] Reduce `src/prompts/index.ts` (current `prompts.ts`) to only the MCP registration: `ListPromptsRequestSchema` handler and the `GetPromptRequestSchema` dispatcher that delegates to the four builders above
+- [ ] Add a `checkoutBranch(name: string): string | null` helper to `src/git/commands.ts`
+- [ ] In `buildReviewPrompt()` (`src/prompts/review.ts`), capture `getCurrentBranch()` before the phase A diff, call `checkoutBranch(fm.branch)` if not already on it, compute `getChangedFiles`, then restore the original branch via `checkoutBranch(originalBranch)` — handle checkout errors gracefully and surface them as a phase A warning
 
 ---
 
-## 4 — Split `git.ts` into low-level commands vs. composite operations
+## 3 — Warn in `#implement` when multiple cycles are IMPLEMENTING
 
-`git.ts` mixes thin wrappers around single git commands with higher-level composite operations.
+Concurrent IMPLEMENTING cycles are the most likely source of branch confusion. The implementer prompt should surface a clear caution when this situation is detected so the agent is forced to be intentional.
 
-- [x] Create `src/git/commands.ts` — move single-command wrappers: `getHeadCommit`, `getGitDiff`, `getChangedFiles`, `getCurrentBranch`, `getMainBranch`, `createBranch`, `renameBranch`, `deleteBranch`, `rebaseBranch`
-- [x] Create `src/git/operations.ts` — move composite workflows: `computeRollback`, `mergeBranchToMain`
-- [x] Create `src/git/index.ts` — barrel re-exporting everything, keeping existing import paths working
+- [ ] In `buildImplementPrompt()` (`src/prompts/implement.ts`), when `implementing.length > 1`, prepend a visible warning block to the prompt text explaining that each cycle must be implemented sequentially on its own branch — check out the branch, implement, commit, then move to the next
 
 ---
 
-## 5 — MCP best-practice improvements
+## 4 — Guard `start_cycle` against an active IMPLEMENTING cycle
 
-- [x] Add `title` fields to all tool `inputSchema` objects — the MCP spec recommends a human-readable `title` on each schema property; clients use it in UI labels
-- [x] Add `annotations` to tool definitions (`readOnlyHint`, `destructiveHint`, `idempotentHint`) for the tools that qualify — e.g. `rebase_on_base_branch` and `decide` (with `approved: true`) are destructive; `save_definition_draft` is idempotent
-- [x] Return structured `content` arrays with `type: "text"` items consistently — verify no tool accidentally returns plain strings instead of the `ToolResult` shape (already done, but make it a lint-enforced type)
-- [x] Validate unknown tool names with an exhaustive `switch` + `default` that returns a typed error rather than the current `if`-chain fallthrough
-- [x] Add a `hal://cycle/{id}` resource entry to the `ListResourcesRequestSchema` response (the `ReadResourceRequestSchema` handler already handles this URI pattern but it is not advertised in the resource list)
+`start_cycle` already refuses to run off `main`, but it does not warn when another cycle is already IMPLEMENTING, which is when cross-branch confusion is most likely.
+
+- [ ] In `startCycle()` (`src/tools/startCycle.ts`), after the branch check, call `getActiveCycles()` and return a soft warning (non-error) in the success message if any cycle is currently in `IMPLEMENTING` state, advising the human to complete that cycle before context-switching
+
+---
+
+## 5 — Add `dependsOn` field to `CycleFrontMatter` (optional chaining)
+
+Allows expressing that a cycle cannot advance to IMPLEMENTING until a named predecessor is DECIDED, removing rebase risk for dependent cycles entirely.
+
+- [ ] Add optional `dependsOn?: string` to `CycleFrontMatter` interface in `src/cycles/types.ts`
+- [ ] Persist/parse `dependsOn` in `formatFrontMatter` / `parseFrontMatter` (`src/cycles/format.ts`, `src/cycles/parse.ts`)
+- [ ] Add optional `dependsOn` parameter to `save_definition_draft` tool schema in `src/tools/schemas.ts` and wire it through `saveDefinitionDraft()` in `src/tools/saveDefinitionDraft.ts`
+- [ ] In `lockDefinition()` (`src/tools/lockDefinition.ts`), check if the referenced `dependsOn` cycle is DECIDED; if not, block with an error explaining the dependency
+
+---
+
+## 6 — Strengthen phase A: verify branch has commits above its base
+
+The current check only uses `git diff --name-only baseCommit..HEAD`, which is relative to the working tree state. Augment it to also verify that the cycle branch actually has commits above its `baseCommit`, so a forgotten `git checkout` cannot produce a false-positive pass.
+
+- [ ] Add `getBranchCommitCount(baseCommit: string, branch: string): number` helper to `src/git/commands.ts` using `git rev-list --count baseCommit..branch`
+- [ ] In `buildReviewPrompt()` (`src/prompts/review.ts`), after the existing `isDiffEmpty` check, also check `getBranchCommitCount(fm.baseCommit, fm.branch) === 0` and, if so, produce a BLOCKED result with reason "no commits on cycle branch above baseCommit"

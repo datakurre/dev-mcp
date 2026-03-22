@@ -68,6 +68,29 @@ export function createBranch(name: string): string | null {
   }
 }
 
+/**
+ * Creates a branch without switching to it (`git branch <name>`).
+ * Returns error message on failure, null on success.
+ */
+export function createBranchNoCheckout(name: string): string | null {
+  try {
+    execSync(`git branch ${name}`, { cwd: process.cwd() });
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message.split("\n")[0] : String(e);
+  }
+}
+
+/** Checks out an existing branch. Returns error message on failure, null on success. */
+export function checkoutBranch(name: string): string | null {
+  try {
+    execSync(`git checkout ${name}`, { cwd: process.cwd() });
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message.split("\n")[0] : String(e);
+  }
+}
+
 /** Renames the current branch in-place. Returns error message on failure, null on success. */
 export function renameBranch(newName: string): string | null {
   try {

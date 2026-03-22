@@ -1,6 +1,6 @@
 import { ok, err, ToolResult } from "./result.js";
 import { resolveCycle, saveCycle, renameCycleFile, slugify } from "../cycles.js";
-import { renameBranch } from "../git.js";
+import { checkoutBranch, renameBranch } from "../git.js";
 
 export function lockDefinition(cycleId: string | undefined, shortname?: string): ToolResult {
   const resolved = resolveCycle(cycleId, "DEFINING");
@@ -40,9 +40,10 @@ export function lockDefinition(cycleId: string | undefined, shortname?: string):
     : slugify(definition.objective);
   cycle = renameCycleFile(cycle, newSlug);
 
-  // Rename git branch
+  // Rename git branch — must be on the cycle branch for `git branch -m` to work
   const newBranch = `hal/${cycle.frontMatter.id}_${newSlug}`;
-  const branchErr = renameBranch(newBranch);
+  const checkoutErr = checkoutBranch(cycle.frontMatter.branch);
+  const branchErr = checkoutErr ?? renameBranch(newBranch);
 
   // Update status
   cycle.frontMatter.status = "IMPLEMENTING";
