@@ -16,6 +16,3 @@ dist/
 
 # agents
 .claude
-
-# engineering docs (intended as a git submodule — never track in main repo)
-.engineering/
