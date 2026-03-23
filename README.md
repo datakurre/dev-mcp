@@ -167,12 +167,13 @@ When review is APPROVED, HAL appends a Decision section to the cycle file:
 ```markdown
 ## Decision
 
-**Approved:** [ ] yes  [ ] no
+**Approved:** [ ] yes [ ] no
 **Decided At:**
 **Feedback:** Approved.
 ```
 
 Open the file and check the appropriate box:
+
 - `[x] yes` — approve the cycle
 - `[x] no` — reject the cycle
 
@@ -244,8 +245,8 @@ Edit any section before saying "lock". The Objective must be a single sentence.
 
 Read-only data the MCP client can fetch at any time:
 
-| URI | Content |
-|-----|---------|
-| `hal://status` | Current state and active cycles |
-| `hal://cycles` | Active cycles only — DEFINING/IMPLEMENTING/REVIEWING/DECIDING (JSON array) |
-| `hal://cycle/{id}` | Full record for a specific cycle (including APPROVED/REJECTED) |
+| URI                | Content                                                                    |
+| ------------------ | -------------------------------------------------------------------------- |
+| `hal://status`     | Current state and active cycles                                            |
+| `hal://cycles`     | Active cycles only — DEFINING/IMPLEMENTING/REVIEWING/DECIDING (JSON array) |
+| `hal://cycle/{id}` | Full record for a specific cycle (including APPROVED/REJECTED)             |

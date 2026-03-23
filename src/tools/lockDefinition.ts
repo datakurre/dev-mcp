@@ -44,7 +44,7 @@ export function lockDefinition(cycleId: string | undefined, shortname?: string):
     ) {
       return err(
         `This cycle depends on cycle ${cycle.frontMatter.dependsOn} ("${predecessor.definition?.objective ?? predecessor.frontMatter.slug}"), ` +
-        `which is currently ${predecessor.frontMatter.status}. It must be APPROVED before this cycle can be locked.`,
+          `which is currently ${predecessor.frontMatter.status}. It must be APPROVED before this cycle can be locked.`,
       );
     }
   }

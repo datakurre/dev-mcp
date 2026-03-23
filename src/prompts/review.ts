@@ -146,7 +146,7 @@ ${phaseAResult}${phaseAInstruction}
 Before starting Phase B:
 1. Run \`git checkout ${fm.branch}\` to switch to the cycle branch
 2. Perform semantic analysis and run any existing tests
-3. After calling submit_review, run \`git checkout main\` to restore the main branch
+3. After calling submit_review, run \`git checkout ${fm.baseBranch}\` to restore the base branch
 
 Semantic checks:
 - Does the implementation satisfy ALL acceptance criteria?

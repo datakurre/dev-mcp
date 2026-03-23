@@ -70,7 +70,8 @@ export const saveDefinitionDraftSchema = {
     dependsOn: {
       type: "string",
       title: "Depends On",
-      description: "Optional cycle ID that must be APPROVED before this cycle can be locked for implementation",
+      description:
+        "Optional cycle ID that must be APPROVED before this cycle can be locked for implementation",
     },
   },
   required: ["objective", "criteria", "constraints", "scope"],

@@ -18,7 +18,8 @@ export function registerResources(server: Server): void {
       {
         uri: "hal://cycles",
         name: "Active Cycles",
-        description: "All currently active cycles (DEFINING, IMPLEMENTING, REVIEWING, DECIDING). For full history use hal://cycle/{id}.",
+        description:
+          "All currently active cycles (DEFINING, IMPLEMENTING, REVIEWING, DECIDING). For full history use hal://cycle/{id}.",
         mimeType: "application/json",
       },
       {

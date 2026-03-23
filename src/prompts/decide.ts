@@ -8,15 +8,12 @@ export function buildDecidePrompt(cycleId?: string): {
   const allDeciding = active.filter((c) => c.frontMatter.status === "DECIDING");
 
   // If a specific cycleId is given, narrow to just that one
-  const deciding = cycleId
-    ? allDeciding.filter((c) => c.frontMatter.id === cycleId)
-    : allDeciding;
+  const deciding = cycleId ? allDeciding.filter((c) => c.frontMatter.id === cycleId) : allDeciding;
 
   if (deciding.length === 0) {
-    const hint =
-      cycleId
-        ? `Cycle ${cycleId} is not in DECIDING state.`
-        : `No cycles are in DECIDING state.`;
+    const hint = cycleId
+      ? `Cycle ${cycleId} is not in DECIDING state.`
+      : `No cycles are in DECIDING state.`;
     return {
       description: "DECIDE stage — no cycles ready",
       messages: [
@@ -24,12 +21,11 @@ export function buildDecidePrompt(cycleId?: string): {
           role: "user" as const,
           content: {
             type: "text" as const,
-            text:
-              `I'm sorry, Dave. ${hint}\n\nActive cycles: ${
-                active.length === 0
-                  ? "none"
-                  : active.map((c) => `${c.frontMatter.id} (${c.frontMatter.status})`).join(", ")
-              }\n\nComplete **#review** first.`,
+            text: `I'm sorry, Dave. ${hint}\n\nActive cycles: ${
+              active.length === 0
+                ? "none"
+                : active.map((c) => `${c.frontMatter.id} (${c.frontMatter.status})`).join(", ")
+            }\n\nComplete **#review** first.`,
           },
         },
       ],

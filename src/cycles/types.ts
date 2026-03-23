@@ -1,4 +1,10 @@
-export type CycleStatus = "DEFINING" | "IMPLEMENTING" | "REVIEWING" | "DECIDING" | "APPROVED" | "REJECTED";
+export type CycleStatus =
+  | "DEFINING"
+  | "IMPLEMENTING"
+  | "REVIEWING"
+  | "DECIDING"
+  | "APPROVED"
+  | "REJECTED";
 export type Verdict = "APPROVED" | "BLOCKED";
 
 export interface CycleDefinition {

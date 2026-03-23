@@ -12,8 +12,6 @@ import { buildReviewPrompt } from "./review.js";
 import { buildReviewBatchClaudePrompt } from "./reviewBatchClaude.js";
 import { buildReviewBatchCopilotPrompt } from "./reviewBatchCopilot.js";
 import { buildDecidePrompt } from "./decide.js";
-import { buildDecideBatchClaudePrompt } from "./decideBatchClaude.js";
-import { buildDecideBatchCopilotPrompt } from "./decideBatchCopilot.js";
 
 export function registerPrompts(server: Server): void {
   server.setRequestHandler(ListPromptsRequestSchema, async () => ({
@@ -72,20 +70,11 @@ export function registerPrompts(server: Server): void {
         arguments: [
           {
             name: "cycleId",
-            description: "Cycle ID to decide (e.g. '2026-03-04_01'). Optional — if omitted, all DECIDING cycles are processed.",
+            description:
+              "Cycle ID to decide (e.g. '2026-03-04_01'). Optional — if omitted, all DECIDING cycles are processed.",
             required: false,
           },
         ],
-      },
-      {
-        name: "decide_batch_claude",
-        description:
-          "DECIDE BATCH (claude): dispatch each DECIDING cycle to the local claude CLI — one independent AI agent per cycle, running sequentially, using claude-haiku-4-5.",
-      },
-      {
-        name: "decide_batch_copilot",
-        description:
-          "DECIDE BATCH (copilot): dispatch each DECIDING cycle to the local copilot CLI — one independent AI agent per cycle, running sequentially, using gpt-5-mini.",
       },
     ],
   }));
@@ -116,10 +105,6 @@ export function registerPrompts(server: Server): void {
         const cid = (request.params.arguments as Record<string, string> | undefined)?.cycleId;
         return buildDecidePrompt(cid);
       }
-      case "decide_batch_claude":
-        return buildDecideBatchClaudePrompt();
-      case "decide_batch_copilot":
-        return buildDecideBatchCopilotPrompt();
       default:
         throw new Error(`Unknown prompt: ${name}`);
     }

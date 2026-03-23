@@ -78,46 +78,6 @@ export function buildCycleImplementPrompt(cycle: CycleData): string {
 }
 
 /**
- * Builds a self-contained prompt string for deciding a single cycle.
- * This is what gets passed to an external CLI (claude / copilot) as the prompt argument.
- * The external agent presents the review summary and calls decide() via the HAL MCP tool.
- */
-export function buildCycleDecidePrompt(cycle: CycleData): string {
-  const fm = cycle.frontMatter;
-  const def = cycle.definition;
-  if (!def) {
-    return `Cycle ${fm.id} has no locked definition. Skipping.`;
-  }
-
-  const lastReview = cycle.reviews[cycle.reviews.length - 1];
-  const isRetryLimit = fm.retryCount >= MAX_RETRIES;
-
-  const escalationNote = isRetryLimit
-    ? `\n⚠️  **Retry limit reached** (${fm.retryCount}/${MAX_RETRIES}). The reviewer repeatedly blocked this implementation. Human intervention may be required — consider rejecting and revising the definition.`
-    : "";
-
-  return (
-    `You are guiding the human through the final DECIDE stage for HAL cycle ${fm.id}.\n\n` +
-    `Always address the human as "Dave" in explicit addresses. When reporting an error, begin with: "I'm sorry, Dave." or "I'm sorry, Dave. I'm afraid I can't do that."\n\n` +
-    `Present the summary below, then ask the human for their decision.${escalationNote}\n\n` +
-    `## What was built — Cycle ${fm.id}\n\n` +
-    `**Cycle file:** \`${cycle.filePath}\`\n` +
-    `**Branch:** ${fm.branch}\n` +
-    `**Objective:** ${def.objective}\n\n` +
-    `## Reviewer Verdict\n\n` +
-    `**Verdict:** ${lastReview?.verdict ?? "none"}\n` +
-    `**Feedback:** ${lastReview?.feedback ?? "(no feedback)"}\n\n` +
-    `## Your Job\n\n` +
-    `1. Summarize the above in 2-3 plain-English sentences\n` +
-    `2. Ask the human: **"Do you approve this implementation? (yes / no)"**\n` +
-    `3. When human responds:\n` +
-    `   - **yes / approve** → call \`decide(cycleId: "${fm.id}", approved: true, feedback: "Approved.")\` via the HAL MCP tool and tell them: "Cycle complete — branch will be merged to main. Use **#define** to start the next cycle."\n` +
-    `   - **no / reject** → ask "What needs to change?" then call \`decide(cycleId: "${fm.id}", approved: false, feedback: <their reasons>)\` via the HAL MCP tool and tell them: "Cycle rejected and reopened for revision. Use **#define** to revise."\n\n` +
-    `Be concise. This is a decision point, not a discussion.`
-  );
-}
-
-/**
  * Builds a self-contained prompt string for reviewing a single cycle.
  * Runs the same Phase A mechanical checks as buildReviewPrompt and embeds
  * the results so the external CLI agent can proceed without MCP context.
@@ -207,7 +167,7 @@ export function buildCycleReviewPrompt(cycle: CycleData): string {
     `Before starting Phase B:\n` +
     `1. Run \`git checkout ${fm.branch}\` to switch to the cycle branch\n` +
     `2. Perform semantic analysis and run any existing tests\n` +
-    `3. After calling submit_review, run \`git checkout main\` to restore the main branch\n\n` +
+    `3. After calling submit_review, run \`git checkout ${fm.baseBranch}\` to restore the base branch\n\n` +
     `Semantic checks:\n` +
     `- Does the implementation satisfy ALL acceptance criteria?\n` +
     `- Do changes risk breaking existing functionality?\n` +
