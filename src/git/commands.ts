@@ -8,22 +8,23 @@ export function getHeadCommit(): string | null {
   }
 }
 
-export function getGitDiff(baseCommit: string | null): string {
-  if (!baseCommit) return "(no baseline commit recorded — diff unavailable)";
+/**
+ * Returns the merge-base commit between `baseBranch` and `branch`.
+ * This is the point where the feature branch diverged from the base.
+ */
+export function getMergeBase(baseBranch: string, branch: string): string | null {
   try {
-    return execSync(`git diff ${baseCommit}..HEAD`, {
-      cwd: process.cwd(),
-      maxBuffer: 1024 * 1024 * 10,
-    }).toString();
-  } catch (e) {
-    return `(error capturing diff: ${e instanceof Error ? e.message : String(e)})`;
+    return execSync(`git merge-base ${baseBranch} ${branch}`, { cwd: process.cwd() })
+      .toString()
+      .trim() || null;
+  } catch {
+    return null;
   }
 }
 
-export function getChangedFiles(baseCommit: string | null): string[] {
-  if (!baseCommit) return [];
+export function getChangedFiles(baseBranch: string, branch: string): string[] {
   try {
-    return execSync(`git diff --name-only ${baseCommit}..HEAD`, { cwd: process.cwd() })
+    return execSync(`git diff --name-only ${baseBranch}...${branch}`, { cwd: process.cwd() })
       .toString()
       .trim()
       .split("\n")
@@ -92,14 +93,16 @@ export function checkoutBranch(name: string): string | null {
 }
 
 /**
- * Returns the number of commits on `branch` that are not reachable from `baseCommit`.
+ * Returns the number of commits on `branch` that are above the merge-base with `baseBranch`
+ * (i.e. commits introduced by the feature branch).
  * Returns 0 on any error (e.g. branch doesn't exist yet).
  */
-export function getBranchCommitCount(baseCommit: string, branch: string): number {
+export function getBranchCommitCount(baseBranch: string, branch: string): number {
   try {
-    const out = execSync(`git rev-list --count ${baseCommit}..${branch}`, {
-      cwd: process.cwd(),
-    })
+    const mergeBase = execSync(`git merge-base ${baseBranch} ${branch}`, { cwd: process.cwd() })
+      .toString()
+      .trim();
+    const out = execSync(`git rev-list --count ${mergeBase}..${branch}`, { cwd: process.cwd() })
       .toString()
       .trim();
     return parseInt(out, 10) || 0;
@@ -130,24 +133,16 @@ export function deleteBranch(name: string): string | null {
 
 /**
  * Rebases the current branch onto `baseBranch`.
- * Returns the HEAD commit of `baseBranch` (new baseCommit) on success, or an error string.
+ * Returns null on success, or an error string on failure.
  */
-export function rebaseBranch(
-  baseBranch: string,
-): { newBaseCommit: string | null; error: string | null } {
+export function rebaseBranch(baseBranch: string): string | null {
   try {
-    const newBaseCommit = execSync(`git rev-parse ${baseBranch}`, { cwd: process.cwd() })
-      .toString()
-      .trim();
     execSync(`git rebase ${baseBranch}`, { cwd: process.cwd() });
-    return { newBaseCommit, error: null };
+    return null;
   } catch (e) {
     try {
       execSync("git rebase --abort", { cwd: process.cwd() });
     } catch {}
-    return {
-      newBaseCommit: null,
-      error: e instanceof Error ? e.message.split("\n")[0] : String(e),
-    };
+    return e instanceof Error ? e.message.split("\n")[0] : String(e);
   }
 }

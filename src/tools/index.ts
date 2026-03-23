@@ -62,7 +62,7 @@ export function registerTools(server: Server): void {
       {
         name: "rebase_on_base_branch",
         description:
-          "Rebase the current cycle branch onto its baseBranch, then update baseCommit to the tip of baseBranch. Call this at the start of every implementation before touching any files.",
+          "Rebase the current cycle branch onto its baseBranch. Call this at the start of every implementation before touching any files.",
         inputSchema: rebaseOnBaseBranchSchema,
         annotations: {
           title: "Rebase on Base Branch",

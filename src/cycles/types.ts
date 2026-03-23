@@ -38,7 +38,6 @@ export interface CycleFrontMatter {
   status: CycleStatus;
   branch: string;     // "hal/2026-03-04_01_add-jwt-auth"
   baseBranch: string; // "main" or "master"
-  baseCommit: string | null;
   retryCount: number;
   startedAt: string;
   dependsOn?: string; // optional cycle ID that must be DECIDED before this one can be locked

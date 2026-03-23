@@ -1,5 +1,5 @@
 import { ok, err, ToolResult } from "./result.js";
-import { resolveCycle, saveCycle } from "../cycles.js";
+import { resolveCycle } from "../cycles.js";
 import { rebaseBranch } from "../git.js";
 
 export function rebaseOnBaseBranch(cycleId: string | undefined): ToolResult {
@@ -8,7 +8,7 @@ export function rebaseOnBaseBranch(cycleId: string | undefined): ToolResult {
   const { cycle, warning } = resolved;
 
   const { baseBranch } = cycle.frontMatter;
-  const { newBaseCommit, error } = rebaseBranch(baseBranch);
+  const error = rebaseBranch(baseBranch);
 
   if (error) {
     return err(
@@ -17,12 +17,9 @@ export function rebaseOnBaseBranch(cycleId: string | undefined): ToolResult {
     );
   }
 
-  cycle.frontMatter.baseCommit = newBaseCommit;
-  saveCycle(cycle);
-
   const warningLine = warning ? `\n⚠️  ${warning}` : "";
   return ok(
-    `Rebased onto ${baseBranch}. New baseCommit: ${newBaseCommit}` +
+    `Rebased onto ${baseBranch}.` +
       warningLine +
       `\n\nProceed with implementation.`,
   );

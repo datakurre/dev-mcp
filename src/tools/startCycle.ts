@@ -1,6 +1,6 @@
 import { ok, err, ToolResult } from "./result.js";
 import { getNextCycleId, createCycle, getActiveCycles } from "../cycles.js";
-import { getHeadCommit, createBranchNoCheckout, getCurrentBranch } from "../git.js";
+import { createBranchNoCheckout, getCurrentBranch } from "../git.js";
 
 export function startCycle(intent: string): ToolResult {
   const currentBranch = getCurrentBranch();
@@ -14,8 +14,7 @@ export function startCycle(intent: string): ToolResult {
   }
   const id = getNextCycleId();
   const branchName = `hal/${id}_undefined`;
-  const baseCommit = getHeadCommit();
-  createCycle(id, branchName, mainBranch, baseCommit);
+  createCycle(id, branchName, mainBranch);
   const branchErr = createBranchNoCheckout(branchName);
   const branchNote = branchErr
     ? `\n⚠️  Branch creation failed (${branchErr.split("\n")[0]}). Continuing without a dedicated branch.`
@@ -31,7 +30,7 @@ export function startCycle(intent: string): ToolResult {
   return ok(
     `Cycle ${id} started. Status: DEFINING\n` +
       `Intent: ${intent}\n` +
-      `Baseline commit: ${baseCommit ?? "(none — not in a git repo)"}` +
+      `Base branch: ${mainBranch}` +
       branchNote +
       implementingNote +
       `\n\nNext: use **#define** to produce the Definition Artifact.`,

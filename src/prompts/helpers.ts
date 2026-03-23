@@ -1,13 +1,7 @@
 import type { CycleData } from "../cycles/types.js";
 import { matchesScope } from "../cycles.js";
 import { MAX_RETRIES } from "../constants.js";
-import {
-  getChangedFiles,
-  computeRollback,
-  getCurrentBranch,
-  checkoutBranch,
-  getBranchCommitCount,
-} from "../git.js";
+import { getChangedFiles, computeRollback, getBranchCommitCount } from "../git.js";
 
 export function formatList(items: string[]): string {
   if (items.length === 0) return "  (none)";
@@ -96,21 +90,15 @@ export function buildCycleReviewPrompt(cycle: CycleData): string {
 
   const lastImpl = cycle.implementations[cycle.implementations.length - 1];
 
-  // Phase A — switch to cycle branch so getChangedFiles is accurate
-  const originalBranch = getCurrentBranch();
-  if (originalBranch !== fm.branch) {
-    checkoutBranch(fm.branch);
-  }
-
-  const changedFiles = getChangedFiles(fm.baseCommit);
+  // Phase A — deterministic checks (three-dot diff: merge-base of baseBranch vs cycle branch)
+  const changedFiles = getChangedFiles(fm.baseBranch, fm.branch);
   const driftedFiles = changedFiles.filter((f) => !matchesScope(f, def.scope));
   const forbiddenViolations =
     def.forbiddenPaths.length > 0
       ? changedFiles.filter((f) => matchesScope(f, def.forbiddenPaths))
       : [];
-  const isDiffEmpty = changedFiles.length === 0 && fm.baseCommit !== null;
-  const branchCommitCount =
-    fm.baseCommit !== null ? getBranchCommitCount(fm.baseCommit, fm.branch) : null;
+  const isDiffEmpty = changedFiles.length === 0;
+  const branchCommitCount = getBranchCommitCount(fm.baseBranch, fm.branch);
 
   let phaseAResult: string;
   let phaseABlocked = false;
@@ -118,9 +106,9 @@ export function buildCycleReviewPrompt(cycle: CycleData): string {
   if (isDiffEmpty) {
     phaseABlocked = true;
     phaseAResult = `PHASE A RESULT: BLOCKED\nReason: No files changed relative to baseline — diff is empty.`;
-  } else if (branchCommitCount !== null && branchCommitCount === 0) {
+  } else if (branchCommitCount === 0) {
     phaseABlocked = true;
-    phaseAResult = `PHASE A RESULT: BLOCKED\nReason: Cycle branch "${fm.branch}" has no commits above baseCommit ${fm.baseCommit} — implementation may not have been committed to the correct branch.`;
+    phaseAResult = `PHASE A RESULT: BLOCKED\nReason: Cycle branch "${fm.branch}" has no commits above "${fm.baseBranch}" — implementation may not have been committed to the correct branch.`;
   } else if (forbiddenViolations.length > 0) {
     phaseABlocked = true;
     phaseAResult =
@@ -135,8 +123,6 @@ export function buildCycleReviewPrompt(cycle: CycleData): string {
       `Reason: Files touched outside declared scope:\n` +
       driftedFiles.map((f) => `  - ${f} (NOT in claimed files)`).join("\n") +
       `\nDeclared scope: ${def.scope.join(", ") || "(none)"}`;
-  } else if (fm.baseCommit === null) {
-    phaseAResult = `PHASE A RESULT: SKIPPED\nReason: No baseline commit recorded — scope drift check unavailable.`;
   } else {
     phaseAResult =
       `PHASE A RESULT: PASSED\n` +
@@ -144,16 +130,11 @@ export function buildCycleReviewPrompt(cycle: CycleData): string {
       changedFiles.map((f) => `  - ${f}`).join("\n");
   }
 
-  // Restore original branch after computing diff
-  if (originalBranch && originalBranch !== fm.branch) {
-    checkoutBranch(originalBranch);
-  }
-
   const phaseAInstruction = phaseABlocked
     ? `\n⛔ PHASE A BLOCKED. Call submit_review(cycleId: "${fm.id}", verdict: "BLOCKED", feedback: "...") via the HAL MCP tool citing the violation above. Do NOT proceed to Phase B. Do NOT checkout the cycle branch.`
     : "";
 
-  const rollbackPlan = computeRollback(fm.baseCommit, lastImpl?.commit ?? null);
+  const rollbackPlan = computeRollback(fm.baseBranch, lastImpl?.commit ?? null);
 
   const nonGoalsSection =
     def.nonGoals.length > 0

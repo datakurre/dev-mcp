@@ -5,11 +5,11 @@ import { execSync } from "child_process";
  * Returns a git revert command with a list of affected files,
  * suitable for display in a review rollback plan.
  */
-export function computeRollback(baseCommit: string | null, headCommit: string | null): string {
-  if (!baseCommit || !headCommit) {
-    return "(no commit range available — rollback unavailable)";
+export function computeRollback(baseBranch: string, headCommit: string | null): string {
+  if (!headCommit) {
+    return "(no commit available — rollback unavailable)";
   }
-  const changedFiles = getChangedFiles(baseCommit);
+  const changedFiles = getChangedFiles(baseBranch, headCommit);
   const fileList =
     changedFiles.length > 0
       ? changedFiles.map((f) => `#   ${f}`).join("\n")

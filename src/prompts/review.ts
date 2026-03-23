@@ -1,5 +1,6 @@
 import { resolveCycle, matchesScope } from "../cycles.js";
-import { getChangedFiles, computeRollback, getCurrentBranch, checkoutBranch, getBranchCommitCount } from "../git.js";
+import { getChangedFiles, computeRollback, getBranchCommitCount } from "../git.js";
+
 import { MAX_RETRIES } from "../constants.js";
 import { formatList, formatScope } from "./helpers.js";
 
@@ -42,28 +43,17 @@ export function buildReviewPrompt(cycleId?: string): {
 
   const lastImpl = cycle.implementations[cycle.implementations.length - 1];
 
-  // Phase A — ensure we are on the cycle's branch so getChangedFiles is accurate
-  const originalBranch = getCurrentBranch();
-  let branchSwitchNote = "";
-  if (originalBranch !== fm.branch) {
-    const switchErr = checkoutBranch(fm.branch);
-    if (switchErr) {
-      branchSwitchNote = `\n⚠️  Could not switch to cycle branch "${fm.branch}": ${switchErr}. Changed-file diff may be inaccurate.`;
-    }
-  }
-
-  // Phase A — deterministic checks
-  const changedFiles = getChangedFiles(fm.baseCommit);
+  // Phase A — deterministic checks (three-dot diff: merge-base of baseBranch vs cycle branch)
+  const changedFiles = getChangedFiles(fm.baseBranch, fm.branch);
   const driftedFiles = changedFiles.filter((f) => !matchesScope(f, definition.scope));
   const forbiddenViolations =
     definition.forbiddenPaths.length > 0
       ? changedFiles.filter((f) => matchesScope(f, definition.forbiddenPaths))
       : [];
-  const isDiffEmpty = changedFiles.length === 0 && fm.baseCommit !== null;
+  const isDiffEmpty = changedFiles.length === 0;
 
   // Also check the cycle branch itself has commits above the base
-  const branchCommitCount =
-    fm.baseCommit !== null ? getBranchCommitCount(fm.baseCommit, fm.branch) : null;
+  const branchCommitCount = getBranchCommitCount(fm.baseBranch, fm.branch);
 
   let phaseAResult: string;
   let phaseABlocked = false;
@@ -71,9 +61,9 @@ export function buildReviewPrompt(cycleId?: string): {
   if (isDiffEmpty) {
     phaseABlocked = true;
     phaseAResult = `PHASE A RESULT: BLOCKED\nReason: No files changed relative to baseline — diff is empty.`;
-  } else if (branchCommitCount !== null && branchCommitCount === 0) {
+  } else if (branchCommitCount === 0) {
     phaseABlocked = true;
-    phaseAResult = `PHASE A RESULT: BLOCKED\nReason: Cycle branch "${fm.branch}" has no commits above baseCommit ${fm.baseCommit} — implementation may not have been committed to the correct branch.`;
+    phaseAResult = `PHASE A RESULT: BLOCKED\nReason: Cycle branch "${fm.branch}" has no commits above "${fm.baseBranch}" — implementation may not have been committed to the correct branch.`;
   } else if (forbiddenViolations.length > 0) {
     phaseABlocked = true;
     phaseAResult =
@@ -88,8 +78,6 @@ export function buildReviewPrompt(cycleId?: string): {
       `Reason: Files touched outside declared scope:\n` +
       driftedFiles.map((f) => `  - ${f} (NOT in claimed files)`).join("\n") +
       `\nDeclared scope: ${definition.scope.join(", ") || "(none)"}`;
-  } else if (fm.baseCommit === null) {
-    phaseAResult = `PHASE A RESULT: SKIPPED\nReason: No baseline commit recorded — scope drift check unavailable.`;
   } else {
     phaseAResult =
       `PHASE A RESULT: PASSED\n` +
@@ -97,16 +85,11 @@ export function buildReviewPrompt(cycleId?: string): {
       changedFiles.map((f) => `  - ${f}`).join("\n");
   }
 
-  // Restore original branch after computing diff
-  if (originalBranch && originalBranch !== fm.branch) {
-    checkoutBranch(originalBranch);
-  }
-
   const phaseAInstruction = phaseABlocked
     ? `\n⛔ PHASE A BLOCKED. Call submit_review(cycleId: "${fm.id}", verdict: "BLOCKED", feedback: "...") citing the violation above. Do NOT proceed to Phase B. Do NOT checkout the cycle branch.`
     : "";
 
-  const rollbackPlan = computeRollback(fm.baseCommit, lastImpl?.commit ?? null);
+  const rollbackPlan = computeRollback(fm.baseBranch, lastImpl?.commit ?? null);
 
   const nonGoalsSection =
     definition.nonGoals.length > 0
@@ -119,7 +102,6 @@ export function buildReviewPrompt(cycleId?: string): {
       : "";
 
   const warningNote = warning ? `\n\n⚠️  ${warning}` : "";
-  const branchNote = branchSwitchNote;
 
   return {
     description: "REVIEW stage — Independent Reviewer Agent",
@@ -133,7 +115,7 @@ export function buildReviewPrompt(cycleId?: string): {
 Always address the human as "Dave" in explicit addresses. When reporting an error, begin with: "I'm sorry, Dave." or "I'm sorry, Dave. I'm afraid I can't do that."
 
 When done, call submit_review(cycleId: "${fm.id}", verdict: "APPROVED"|"BLOCKED", feedback: "..."). Then tell the user: "Review submitted. Use **#decide** to make the final approval."
-${warningNote}${branchNote}
+${warningNote}
 
 ## Original Definition — Cycle ${fm.id}
 

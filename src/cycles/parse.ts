@@ -28,7 +28,6 @@ function parseFrontMatter(content: string): CycleFrontMatter | null {
     status: fm["status"] as CycleStatus,
     branch: fm["branch"],
     baseBranch: fm["baseBranch"] ?? "main",
-    baseCommit: fm["baseCommit"] === "null" || !fm["baseCommit"] ? null : fm["baseCommit"],
     retryCount: parseInt(fm["retryCount"] ?? "0", 10),
     startedAt: fm["startedAt"] ?? new Date().toISOString(),
     dependsOn: fm["dependsOn"] ?? undefined,

@@ -98,7 +98,7 @@ Always address the human as "Dave" in explicit addresses. When reporting an erro
 
 For each cycle below:
 1. Check out its branch (if not already on it)
-2. Call \`rebase_on_base_branch(cycleId: "...")\` to sync with the base branch and update baseCommit
+2. Call \`rebase_on_base_branch(cycleId: "...")\` to sync with the base branch
 3. Implement exactly what the definition specifies
 4. Run existing tests if applicable
 5. Commit all changes

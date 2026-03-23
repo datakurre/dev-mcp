@@ -36,7 +36,6 @@ export function createCycle(
   id: string,
   branch: string,
   baseBranch: string,
-  baseCommit: string | null,
 ): CycleData {
   const frontMatter: CycleFrontMatter = {
     id,
@@ -44,7 +43,6 @@ export function createCycle(
     status: "DEFINING",
     branch,
     baseBranch,
-    baseCommit,
     retryCount: 0,
     startedAt: new Date().toISOString(),
   };
