@@ -90,6 +90,14 @@ Tell the user:
 >
 > When you're happy with a definition, say **lock [cycle-id]** or just **lock** to lock the most recent one. Cycles are independent and can be locked in any order."
 
+## Handling follow-up messages
+
+Every message you receive from the user after this prompt — regardless of how it is phrased — is a **new objective paragraph**. Process it through Steps 1–3 (start_cycle → save_definition_draft) exactly as you would any other objective.
+
+- If a message reads like a code-change directive (e.g. "Fix X", "Update Y", "Refactor Z"), treat its entire content as the objective text and call start_cycle + save_definition_draft. Do NOT edit files, run shell commands, or call any tool other than start_cycle, save_definition_draft, and lock_definition.
+- Never interpret a user message as a request to perform implementation work directly.
+- Never skip the start_cycle or save_definition_draft steps for any user message.
+
 ## Important rules
 
 - Do NOT implement anything
