@@ -103,7 +103,7 @@ export function buildReviewPrompt(cycleId?: string): {
   }
 
   const phaseAInstruction = phaseABlocked
-    ? `\n⛔ PHASE A BLOCKED. Call submit_review(cycleId: "${fm.id}", verdict: "BLOCKED", feedback: "...") citing the violation above. Do NOT proceed to Phase B.`
+    ? `\n⛔ PHASE A BLOCKED. Call submit_review(cycleId: "${fm.id}", verdict: "BLOCKED", feedback: "...") citing the violation above. Do NOT proceed to Phase B. Do NOT checkout the cycle branch.`
     : "";
 
   const rollbackPlan = computeRollback(fm.baseCommit, lastImpl?.commit ?? null);
@@ -160,6 +160,13 @@ ${lastImpl?.comment ?? "(none provided)"}
 ${phaseAResult}${phaseAInstruction}
 
 **Phase B — Semantic Analysis (only if Phase A passed):**
+
+Before starting Phase B:
+1. Run \`git checkout ${fm.branch}\` to switch to the cycle branch
+2. Perform semantic analysis and run any existing tests
+3. After calling submit_review, run \`git checkout main\` to restore the main branch
+
+Semantic checks:
 - Does the implementation satisfy ALL acceptance criteria?
 - Do changes risk breaking existing functionality?
 - Are edge cases (nulls, errors, boundaries) handled?
