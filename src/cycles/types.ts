@@ -1,4 +1,4 @@
-export type CycleStatus = "DEFINING" | "IMPLEMENTING" | "REVIEWING" | "DECIDING" | "DECIDED";
+export type CycleStatus = "DEFINING" | "IMPLEMENTING" | "REVIEWING" | "DECIDING" | "APPROVED" | "REJECTED";
 export type Verdict = "APPROVED" | "BLOCKED";
 
 export interface CycleDefinition {
@@ -27,9 +27,9 @@ export interface ReviewEntry {
 }
 
 export interface DecisionEntry {
-  approved: boolean;
+  approved: boolean | null; // null = pending (checkbox template not yet filled)
   feedback: string;
-  decidedAt: string;
+  decidedAt: string; // empty string if not yet decided
 }
 
 export interface CycleFrontMatter {
@@ -40,7 +40,7 @@ export interface CycleFrontMatter {
   baseBranch: string; // "main" or "master"
   retryCount: number;
   startedAt: string;
-  dependsOn?: string; // optional cycle ID that must be DECIDED before this one can be locked
+  dependsOn?: string; // optional cycle ID that must be APPROVED before this one can be locked
 }
 
 export interface CycleData {

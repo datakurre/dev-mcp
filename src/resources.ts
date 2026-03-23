@@ -3,7 +3,7 @@ import {
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { listCycles, getActiveCycles, loadCycle } from "./cycles.js";
+import { getActiveCycles, loadCycle } from "./cycles.js";
 import { MAX_RETRIES } from "./constants.js";
 
 export function registerResources(server: Server): void {
@@ -17,8 +17,8 @@ export function registerResources(server: Server): void {
       },
       {
         uri: "hal://cycles",
-        name: "All Cycles",
-        description: "Full data for all cycles (active and completed)",
+        name: "Active Cycles",
+        description: "All currently active cycles (DEFINING, IMPLEMENTING, REVIEWING, DECIDING). For full history use hal://cycle/{id}.",
         mimeType: "application/json",
       },
       {
@@ -48,9 +48,9 @@ export function registerResources(server: Server): void {
     }
 
     if (uri === "hal://cycles") {
-      const all = listCycles();
+      const active = getActiveCycles();
       return {
-        contents: [{ uri, mimeType: "application/json", text: JSON.stringify(all, null, 2) }],
+        contents: [{ uri, mimeType: "application/json", text: JSON.stringify(active, null, 2) }],
       };
     }
 

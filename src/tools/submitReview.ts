@@ -23,12 +23,17 @@ export function submitReview(
 
   if (verdict === "APPROVED") {
     cycle.frontMatter.status = "DECIDING";
+    cycle.decision = {
+      approved: null,
+      feedback: "Approved.",
+      decidedAt: "",
+    };
     saveCycle(cycle);
     return ok(
       `Review ${reviewNumber}: APPROVED. Status: DECIDING\n\n` +
         `Feedback: ${feedback}` +
         warningLine +
-        `\n\nNext: use **#decide** to make the final approval.`,
+        `\n\nDecision template appended to \`${cycle.filePath}\`. Edit the file to check **[ ] yes** (approve) or **[ ] no** (reject), then use **#decide**.`,
     );
   }
 

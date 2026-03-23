@@ -68,12 +68,11 @@ export function registerPrompts(server: Server): void {
       {
         name: "decide",
         description:
-          "DECIDE stage: human final approval — approve to complete the cycle or reject to revise the definition.",
+          "DECIDE stage: scan all DECIDING cycles — auto-approve/reject those with checkboxes filled, and list undecided ones for the human to edit.",
         arguments: [
           {
             name: "cycleId",
-            description:
-              "Cycle ID to decide (e.g. '2026-03-04_01'). Optional if only one cycle is in DECIDING state.",
+            description: "Cycle ID to decide (e.g. '2026-03-04_01'). Optional — if omitted, all DECIDING cycles are processed.",
             required: false,
           },
         ],

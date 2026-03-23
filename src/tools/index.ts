@@ -70,7 +70,7 @@ export function registerTools(server: Server): void {
       {
         name: "decide",
         description:
-          "Human final sign-off. Appends a Decision section to the cycle file. approved=true → DECIDED (cycle complete). approved=false → DEFINING (reopen for revision).",
+          "Human final sign-off. approved=true → APPROVED (merges branch, cycle complete). approved=false → REJECTED (terminal, definition preserved).",
         inputSchema: decideSchema,
         annotations: { title: "Decide", destructiveHint: true, idempotentHint: false },
       },

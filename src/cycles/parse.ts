@@ -10,7 +10,7 @@ import type {
 } from "./types.js";
 import { parseBullets } from "./utils.js";
 
-function parseFrontMatter(content: string): CycleFrontMatter | null {
+export function parseFrontMatterOnly(content: string): CycleFrontMatter | null {
   const match = content.match(/^---\n([\s\S]*?)\n---/);
   if (!match) return null;
   const fm: Record<string, string> = {};
@@ -88,15 +88,22 @@ function parseReviewSection(text: string, number: number): ReviewEntry {
 }
 
 function parseDecisionSection(text: string): DecisionEntry {
-  const approved = text.match(/\*\*Approved:\*\*\s*(\w+)/)?.[1]?.trim() === "true";
-  const decidedAt =
-    text.match(/\*\*Decided At:\*\*\s*([^\n]+)/)?.[1]?.trim() ?? new Date().toISOString();
+  const approvedRaw = text.match(/\*\*Approved:\*\*\s*([^\n]+)/)?.[1]?.trim() ?? "";
+  let approved: boolean | null;
+  if (approvedRaw === "true" || /\[x\]\s*yes/i.test(approvedRaw)) {
+    approved = true;
+  } else if (approvedRaw === "false" || /\[x\]\s*no/i.test(approvedRaw)) {
+    approved = false;
+  } else {
+    approved = null; // "[ ] yes  [ ] no" — not yet decided
+  }
+  const decidedAtRaw = text.match(/\*\*Decided At:\*\*\s*([^\n]*)/)?.[1]?.trim() ?? "";
   const feedback = text.match(/\*\*Feedback:\*\*\s*([^\n]+)/)?.[1]?.trim() ?? "";
-  return { approved, decidedAt, feedback };
+  return { approved, decidedAt: decidedAtRaw, feedback };
 }
 
 export function parseCycleFile(content: string, filePath: string): CycleData | null {
-  const frontMatter = parseFrontMatter(content);
+  const frontMatter = parseFrontMatterOnly(content);
   if (!frontMatter) return null;
 
   const body = content.replace(/^---\n[\s\S]*?\n---\n*/, "");

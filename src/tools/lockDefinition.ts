@@ -38,10 +38,13 @@ export function lockDefinition(cycleId: string | undefined, shortname?: string):
         `This cycle depends on cycle ${cycle.frontMatter.dependsOn}, which could not be found.`,
       );
     }
-    if (predecessor.frontMatter.status !== "DECIDED") {
+    if (
+      predecessor.frontMatter.status !== "APPROVED" &&
+      (predecessor.frontMatter.status as string) !== "DECIDED" // backwards compat
+    ) {
       return err(
         `This cycle depends on cycle ${cycle.frontMatter.dependsOn} ("${predecessor.definition?.objective ?? predecessor.frontMatter.slug}"), ` +
-          `which is currently ${predecessor.frontMatter.status}. It must be DECIDED before this cycle can be locked.`,
+        `which is currently ${predecessor.frontMatter.status}. It must be APPROVED before this cycle can be locked.`,
       );
     }
   }

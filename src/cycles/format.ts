@@ -73,8 +73,13 @@ ${bulletList(def?.forbiddenPaths ?? [])}`;
 
   if (data.decision) {
     content += `\n\n---\n\n## Decision\n\n`;
-    content += `**Approved:** ${data.decision.approved}\n`;
-    content += `**Decided At:** ${data.decision.decidedAt}\n`;
+    if (data.decision.approved === null) {
+      content += `**Approved:** [ ] yes  [ ] no\n`;
+      content += `**Decided At:**\n`;
+    } else {
+      content += `**Approved:** ${data.decision.approved}\n`;
+      content += `**Decided At:** ${data.decision.decidedAt}\n`;
+    }
     content += `**Feedback:** ${data.decision.feedback}\n`;
   }
 

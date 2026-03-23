@@ -127,7 +127,8 @@ Nodemon (configured in `.vscode/mcp.json`) watches `dist/` and restarts the MCP 
 Work moves through four states in a strict sequence. No stage can be bypassed.
 
 ```
-DEFINING → IMPLEMENTING → REVIEWING → DECIDING → (next cycle)
+DEFINING → IMPLEMENTING → REVIEWING → DECIDING → APPROVED
+                                               ↘ REJECTED
 ```
 
 ### Stage 1 — Define
@@ -161,10 +162,24 @@ If BLOCKED, the state returns to Implementing (up to 3 retries). At the retry li
 
 ### Stage 4 — Decide
 
-You make the final call. HAL presents a plain-English summary and asks for approval.
+When review is APPROVED, HAL appends a Decision section to the cycle file:
 
-- **Approved** → cycle recorded, ready for next cycle
-- **Rejected** → explain what needs to change; definition is cleared and returns to Defining
+```markdown
+## Decision
+
+**Approved:** [ ] yes  [ ] no
+**Decided At:**
+**Feedback:** Approved.
+```
+
+Open the file and check the appropriate box:
+- `[x] yes` — approve the cycle
+- `[x] no` — reject the cycle
+
+Then run **`#decide`** — it scans all DECIDING cycles, auto-processes those with checkboxes filled, and lists any remaining undecided ones for you to handle. You can edit multiple files before running `#decide` once to batch all decisions.
+
+- **Approved** → status `APPROVED`, branch merged to main, cycle complete
+- **Rejected** → status `REJECTED`, definition preserved for reference; start a new cycle with `#define` if you want to revise
 
 ---
 
@@ -178,6 +193,7 @@ id: "2026-03-04_01"
 slug: add-rate-limiting
 status: IMPLEMENTING
 branch: hal/2026-03-04_01_add-rate-limiting
+baseBranch: main
 baseCommit: abc1234
 retryCount: 0
 startedAt: "2026-03-04T10:00:00.000Z"
@@ -228,8 +244,8 @@ Edit any section before saying "lock". The Objective must be a single sentence.
 
 Read-only data the MCP client can fetch at any time:
 
-| URI                | Content                          |
-| ------------------ | -------------------------------- |
-| `hal://status`     | Current state and active cycles  |
-| `hal://cycles`     | All cycle records (JSON array)   |
-| `hal://cycle/{id}` | Full record for a specific cycle |
+| URI | Content |
+|-----|---------|
+| `hal://status` | Current state and active cycles |
+| `hal://cycles` | Active cycles only — DEFINING/IMPLEMENTING/REVIEWING/DECIDING (JSON array) |
+| `hal://cycle/{id}` | Full record for a specific cycle (including APPROVED/REJECTED) |

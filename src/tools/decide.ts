@@ -1,5 +1,5 @@
 import { ok, err, ToolResult } from "./result.js";
-import { resolveCycle, saveCycle, listCycles } from "../cycles.js";
+import { resolveCycle, saveCycle, listCycleFrontMatters } from "../cycles.js";
 import { mergeBranchToMain } from "../git.js";
 
 export function decide(
@@ -19,9 +19,9 @@ export function decide(
       feedback,
       decidedAt: new Date().toISOString(),
     };
-    cycle.frontMatter.status = "DECIDED";
+    cycle.frontMatter.status = "APPROVED";
     saveCycle(cycle);
-    const total = listCycles().filter((c) => c.frontMatter.status === "DECIDED").length;
+    const total = listCycleFrontMatters().filter((fm) => fm.status === "APPROVED").length;
 
     const mergeMsg = `Merge ${cycle.frontMatter.branch}: ${cycle.definition?.objective ?? cycle.frontMatter.slug}`;
     const mergeErr = mergeBranchToMain(cycle.frontMatter.branch, mergeMsg);
@@ -30,7 +30,7 @@ export function decide(
       : `\nMerged ${cycle.frontMatter.branch} → main.`;
 
     return ok(
-      `Cycle ${cycle.frontMatter.id} APPROVED. Status: DECIDED\n\n` +
+      `Cycle ${cycle.frontMatter.id} APPROVED. Status: APPROVED\n\n` +
         `Feedback: ${feedback}` +
         mergeNote +
         warningLine +
@@ -38,22 +38,18 @@ export function decide(
     );
   }
 
-  // Rejected — record decision, clear definition and implementation artifacts, return to DEFINING
+  // Rejected — record decision and mark as REJECTED (terminal state, definition preserved)
   cycle.decision = {
     approved: false,
     feedback,
     decidedAt: new Date().toISOString(),
   };
-  cycle.definition = null;
-  cycle.implementations = [];
-  cycle.reviews = [];
-  cycle.frontMatter.status = "DEFINING";
-  cycle.frontMatter.retryCount = 0;
+  cycle.frontMatter.status = "REJECTED";
   saveCycle(cycle);
   return ok(
-    `Cycle ${cycle.frontMatter.id} REJECTED. Status: DEFINING\n\n` +
+    `Cycle ${cycle.frontMatter.id} REJECTED. Status: REJECTED\n\n` +
       `Feedback: ${feedback}` +
       warningLine +
-      `\n\nDefinition cleared. Use **#define** to revise and re-lock.`,
+      `\n\nCycle rejected. Use **#define** to start a new cycle if revision is needed.`,
   );
 }
