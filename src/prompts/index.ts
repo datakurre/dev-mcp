@@ -9,6 +9,8 @@ import { buildImplementPrompt } from "./implement.js";
 import { buildImplementBatchClaudePrompt } from "./implementBatchClaude.js";
 import { buildImplementBatchCopilotPrompt } from "./implementBatchCopilot.js";
 import { buildReviewPrompt } from "./review.js";
+import { buildReviewBatchClaudePrompt } from "./reviewBatchClaude.js";
+import { buildReviewBatchCopilotPrompt } from "./reviewBatchCopilot.js";
 import { buildDecidePrompt } from "./decide.js";
 
 export function registerPrompts(server: Server): void {
@@ -38,6 +40,16 @@ export function registerPrompts(server: Server): void {
         name: "implement_batch_copilot",
         description:
           "IMPLEMENT BATCH (copilot): dispatch each IMPLEMENTING cycle to the local copilot CLI — one independent AI agent per cycle, running sequentially.",
+      },
+      {
+        name: "review_batch_claude",
+        description:
+          "REVIEW BATCH (claude): dispatch each REVIEWING cycle to the local claude CLI — one independent AI agent per cycle, running sequentially, using claude-haiku-4-5.",
+      },
+      {
+        name: "review_batch_copilot",
+        description:
+          "REVIEW BATCH (copilot): dispatch each REVIEWING cycle to the local copilot CLI — one independent AI agent per cycle, running sequentially, using gpt-5-mini.",
       },
       {
         name: "review",
@@ -80,6 +92,10 @@ export function registerPrompts(server: Server): void {
         return buildImplementBatchClaudePrompt();
       case "implement_batch_copilot":
         return buildImplementBatchCopilotPrompt();
+      case "review_batch_claude":
+        return buildReviewBatchClaudePrompt();
+      case "review_batch_copilot":
+        return buildReviewBatchCopilotPrompt();
       case "review": {
         const cid = (request.params.arguments as Record<string, string> | undefined)?.cycleId;
         return buildReviewPrompt(cid);
