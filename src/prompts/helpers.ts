@@ -215,7 +215,9 @@ export function buildCycleReviewPrompt(cycle: CycleData): string {
     `- Were any non-goals implemented anyway?\n` +
     `- Do the invariants still hold after this change?\n\n` +
     `## Rollback Plan (pre-computed — do not modify)\n` +
-    "```\n" + rollbackPlan + "\n```\n\n" +
+    "```\n" +
+    rollbackPlan +
+    "\n```\n\n" +
     `Retry: ${fm.retryCount}/${MAX_RETRIES}`
   );
 }

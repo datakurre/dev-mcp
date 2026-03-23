@@ -21,6 +21,10 @@ devenv.local.yaml:
 build: ## Build the project (for development)
 	npm run build
 
+.PHONY: format
+format: ## Format source files with Prettier
+	npm run format
+
 .PHONY: watch
 watch: ## Build the project in watch mode (for development)
 	npm run build:watch

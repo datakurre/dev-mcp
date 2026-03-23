@@ -30,8 +30,7 @@ export function registerPrompts(server: Server): void {
       },
       {
         name: "implement",
-        description:
-          "IMPLEMENT stage: execute all locked definitions and commit the results.",
+        description: "IMPLEMENT stage: execute all locked definitions and commit the results.",
       },
       {
         name: "implement_batch_claude",
@@ -60,7 +59,8 @@ export function registerPrompts(server: Server): void {
         arguments: [
           {
             name: "cycleId",
-            description: "Cycle ID to review (e.g. '2026-03-04_01'). Optional if only one cycle is in REVIEWING state.",
+            description:
+              "Cycle ID to review (e.g. '2026-03-04_01'). Optional if only one cycle is in REVIEWING state.",
             required: false,
           },
         ],
@@ -72,7 +72,8 @@ export function registerPrompts(server: Server): void {
         arguments: [
           {
             name: "cycleId",
-            description: "Cycle ID to decide (e.g. '2026-03-04_01'). Optional if only one cycle is in DECIDING state.",
+            description:
+              "Cycle ID to decide (e.g. '2026-03-04_01'). Optional if only one cycle is in DECIDING state.",
             required: false,
           },
         ],

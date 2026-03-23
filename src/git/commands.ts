@@ -14,9 +14,11 @@ export function getHeadCommit(): string | null {
  */
 export function getMergeBase(baseBranch: string, branch: string): string | null {
   try {
-    return execSync(`git merge-base ${baseBranch} ${branch}`, { cwd: process.cwd() })
-      .toString()
-      .trim() || null;
+    return (
+      execSync(`git merge-base ${baseBranch} ${branch}`, { cwd: process.cwd() })
+        .toString()
+        .trim() || null
+    );
   } catch {
     return null;
   }
@@ -36,9 +38,7 @@ export function getChangedFiles(baseBranch: string, branch: string): string[] {
 
 export function getCurrentBranch(): string | null {
   try {
-    return execSync("git rev-parse --abbrev-ref HEAD", { cwd: process.cwd() })
-      .toString()
-      .trim();
+    return execSync("git rev-parse --abbrev-ref HEAD", { cwd: process.cwd() }).toString().trim();
   } catch {
     return null;
   }

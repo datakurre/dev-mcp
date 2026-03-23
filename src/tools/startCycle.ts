@@ -25,7 +25,9 @@ export function startCycle(intent: string): ToolResult {
     implementing.length > 0
       ? `\n\n⚠️  Note: ${implementing.length} cycle(s) are already IMPLEMENTING (${implementing
           .map((c) => c.frontMatter.id)
-          .join(", ")}). Consider completing those before starting new work to avoid branch confusion.`
+          .join(
+            ", ",
+          )}). Consider completing those before starting new work to avoid branch confusion.`
       : "";
   return ok(
     `Cycle ${id} started. Status: DEFINING\n` +

@@ -18,9 +18,5 @@ export function rebaseOnBaseBranch(cycleId: string | undefined): ToolResult {
   }
 
   const warningLine = warning ? `\n⚠️  ${warning}` : "";
-  return ok(
-    `Rebased onto ${baseBranch}.` +
-      warningLine +
-      `\n\nProceed with implementation.`,
-  );
+  return ok(`Rebased onto ${baseBranch}.` + warningLine + `\n\nProceed with implementation.`);
 }

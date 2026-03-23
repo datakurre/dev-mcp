@@ -1,7 +1,35 @@
 const STOP_WORDS = new Set([
-  "a", "an", "the", "to", "for", "of", "in", "on", "at", "by", "with",
-  "and", "or", "is", "are", "was", "were", "be", "been", "that", "this",
-  "from", "into", "as", "it", "its", "so", "do", "not", "all", "up",
+  "a",
+  "an",
+  "the",
+  "to",
+  "for",
+  "of",
+  "in",
+  "on",
+  "at",
+  "by",
+  "with",
+  "and",
+  "or",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "that",
+  "this",
+  "from",
+  "into",
+  "as",
+  "it",
+  "its",
+  "so",
+  "do",
+  "not",
+  "all",
+  "up",
 ]);
 
 /** Extract 3–5 meaningful words from text and join with hyphens. */
@@ -43,7 +71,7 @@ function globToRegex(pattern: string): RegExp {
   // Escape regex special chars (not * or the placeholder)
   const escaped = ph.replace(/[.+^${}()|[\]\\]/g, "\\$&");
   const regexStr = escaped
-    .replace(/\x00/g, ".*")   // ** → any path segment(s)
+    .replace(/\x00/g, ".*") // ** → any path segment(s)
     .replace(/\*/g, "[^/]*"); // *  → any chars except /
   return new RegExp(`^${regexStr}$`);
 }

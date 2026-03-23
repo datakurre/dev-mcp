@@ -24,7 +24,8 @@ export function registerResources(server: Server): void {
       {
         uri: "hal://cycle/{id}",
         name: "Cycle by ID",
-        description: "Full data for a single cycle identified by its ID (e.g. hal://cycle/2026-03-04_01)",
+        description:
+          "Full data for a single cycle identified by its ID (e.g. hal://cycle/2026-03-04_01)",
         mimeType: "application/json",
       },
     ],

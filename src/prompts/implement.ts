@@ -17,14 +17,11 @@ export function buildImplementPrompt(): {
           role: "user" as const,
           content: {
             type: "text" as const,
-            text:
-              `I'm sorry, Dave. No cycles are in IMPLEMENTING state.\n\nActive cycles: ${
-                active.length === 0
-                  ? "none"
-                  : active
-                      .map((c) => `${c.frontMatter.id} (${c.frontMatter.status})`)
-                      .join(", ")
-              }\n\nComplete **#define** first, then use **#implement**.`,
+            text: `I'm sorry, Dave. No cycles are in IMPLEMENTING state.\n\nActive cycles: ${
+              active.length === 0
+                ? "none"
+                : active.map((c) => `${c.frontMatter.id} (${c.frontMatter.status})`).join(", ")
+            }\n\nComplete **#define** first, then use **#implement**.`,
           },
         },
       ],

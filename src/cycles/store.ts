@@ -25,18 +25,12 @@ export function getNextCycleId(): string {
 
 export function findCycleFile(id: string): string | null {
   mkdirSync(CYCLES_DIR, { recursive: true });
-  const files = readdirSync(CYCLES_DIR).filter(
-    (f) => f.startsWith(`${id}_`) && f.endsWith(".md"),
-  );
+  const files = readdirSync(CYCLES_DIR).filter((f) => f.startsWith(`${id}_`) && f.endsWith(".md"));
   if (files.length === 0) return null;
   return join(CYCLES_DIR, files[0]);
 }
 
-export function createCycle(
-  id: string,
-  branch: string,
-  baseBranch: string,
-): CycleData {
+export function createCycle(id: string, branch: string, baseBranch: string): CycleData {
   const frontMatter: CycleFrontMatter = {
     id,
     slug: "undefined",

@@ -26,12 +26,11 @@ export function buildReviewBatchCopilotPrompt(): {
           role: "user" as const,
           content: {
             type: "text" as const,
-            text:
-              `I'm sorry, Dave. No cycles are in REVIEWING state.\n\nActive cycles: ${
-                active.length === 0
-                  ? "none"
-                  : active.map((c) => `${c.frontMatter.id} (${c.frontMatter.status})`).join(", ")
-              }\n\nComplete **#implement** first.`,
+            text: `I'm sorry, Dave. No cycles are in REVIEWING state.\n\nActive cycles: ${
+              active.length === 0
+                ? "none"
+                : active.map((c) => `${c.frontMatter.id} (${c.frontMatter.status})`).join(", ")
+            }\n\nComplete **#implement** first.`,
           },
         },
       ],
@@ -45,7 +44,9 @@ export function buildReviewBatchCopilotPrompt(): {
       return (
         `### Cycle ${cycle.frontMatter.id} — ${cycle.definition?.objective ?? "(no definition)"}\n\n` +
         `**Step 1** — Use the \`create_file\` tool to write the following content to \`${promptPath}\`:\n\n` +
-        "```\n" + prompt + "\n```\n\n" +
+        "```\n" +
+        prompt +
+        "\n```\n\n" +
         `**Step 2** — Run in terminal:\n\n` +
         "```bash\n" +
         `copilot --model gpt-5-mini --allow-all --prompt @${promptPath}\n` +

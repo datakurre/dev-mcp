@@ -34,12 +34,14 @@ export function lockDefinition(cycleId: string | undefined, shortname?: string):
   if (cycle.frontMatter.dependsOn) {
     const predecessor = loadCycle(cycle.frontMatter.dependsOn);
     if (!predecessor) {
-      return err(`This cycle depends on cycle ${cycle.frontMatter.dependsOn}, which could not be found.`);
+      return err(
+        `This cycle depends on cycle ${cycle.frontMatter.dependsOn}, which could not be found.`,
+      );
     }
     if (predecessor.frontMatter.status !== "DECIDED") {
       return err(
         `This cycle depends on cycle ${cycle.frontMatter.dependsOn} ("${predecessor.definition?.objective ?? predecessor.frontMatter.slug}"), ` +
-        `which is currently ${predecessor.frontMatter.status}. It must be DECIDED before this cycle can be locked.`,
+          `which is currently ${predecessor.frontMatter.status}. It must be DECIDED before this cycle can be locked.`,
       );
     }
   }

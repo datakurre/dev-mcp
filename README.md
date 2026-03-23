@@ -45,11 +45,11 @@ npm run build:watch
 
 **Step 3** — Open **GitHub Copilot Chat** and use these commands:
 
-| Stage | Command | Notes |
-|-------|---------|-------|
+| Stage  | Command           | Notes                                              |
+| ------ | ----------------- | -------------------------------------------------- |
 | Define | `/mcp.hal.define` | Describe your intent; HAL generates the definition |
-| Review | `/mcp.hal.review` | Run after implementation is submitted |
-| Decide | `/mcp.hal.decide` | Final human approval |
+| Review | `/mcp.hal.review` | Run after implementation is submitted              |
+| Decide | `/mcp.hal.decide` | Final human approval                               |
 
 > **Note:** Run the **Implement** stage using Claude Code (see below), not Copilot Chat. This keeps the implementation session isolated from governance.
 
@@ -61,14 +61,16 @@ The **Claude Code** terminal client handles the Implement stage. It needs file-s
 
 **Step 1** — Add HAL as an MCP server. Choose one option:
 
-*Option A — one-time CLI registration (uses the built dist):*
+_Option A — one-time CLI registration (uses the built dist):_
+
 ```bash
 claude mcp add hal -- node "$(pwd)/dist/index.js"
 ```
 
-*Option B — project-local config with live-reload (for development):*
+_Option B — project-local config with live-reload (for development):_
 
 Create `.claude/mcp.json` in the project root:
+
 ```json
 {
   "mcpServers": {
@@ -99,12 +101,12 @@ Claude Code will read the locked definition and implement it exactly as specifie
 
 ## Which Client Handles Which Stage
 
-| Stage | Command (VSCode) | Command (Claude Code) | Client |
-|-------|------------------|-----------------------|--------|
-| Define | `/mcp.hal.define` | `/mcp__hal__define` | GitHub Copilot Chat (or Claude Code) |
-| Implement | — | `/mcp__hal__implement` | **Claude Code only** |
-| Review | `/mcp.hal.review` | `/mcp__hal__review` | GitHub Copilot Chat (or Claude Code) |
-| Decide | `/mcp.hal.decide` | `/mcp__hal__decide` | GitHub Copilot Chat (or Claude Code) |
+| Stage     | Command (VSCode)  | Command (Claude Code)  | Client                               |
+| --------- | ----------------- | ---------------------- | ------------------------------------ |
+| Define    | `/mcp.hal.define` | `/mcp__hal__define`    | GitHub Copilot Chat (or Claude Code) |
+| Implement | —                 | `/mcp__hal__implement` | **Claude Code only**                 |
+| Review    | `/mcp.hal.review` | `/mcp__hal__review`    | GitHub Copilot Chat (or Claude Code) |
+| Decide    | `/mcp.hal.decide` | `/mcp__hal__decide`    | GitHub Copilot Chat (or Claude Code) |
 
 ---
 
@@ -182,30 +184,38 @@ startedAt: "2026-03-04T10:00:00.000Z"
 ---
 
 ## Objective
+
 All API endpoints return HTTP 429 after more than 100 requests per minute from a single IP.
 
 ## Acceptance Criteria
+
 - A counter per IP is tracked with a 60-second sliding window
 - Requests beyond the limit receive 429 with a Retry-After header
 
 ## Constraints
+
 - Must not introduce a database dependency
 
 ## Scope
+
 - src/middleware/rateLimit.ts
 - src/app.ts
 
 ## Non-Goals
+
 - Per-user rate limiting
 
 ## Invariants
+
 - Existing middleware order is unchanged
 - All current tests continue to pass
 
 ## Implementation Notes
+
 - (none)
 
 ## Forbidden Paths
+
 - src/core/
 - tests/
 ```
@@ -218,8 +228,8 @@ Edit any section before saying "lock". The Objective must be a single sentence.
 
 Read-only data the MCP client can fetch at any time:
 
-| URI | Content |
-|-----|---------|
-| `hal://status` | Current state and active cycles |
-| `hal://cycles` | All cycle records (JSON array) |
+| URI                | Content                          |
+| ------------------ | -------------------------------- |
+| `hal://status`     | Current state and active cycles  |
+| `hal://cycles`     | All cycle records (JSON array)   |
 | `hal://cycle/{id}` | Full record for a specific cycle |

@@ -33,10 +33,10 @@ export interface DecisionEntry {
 }
 
 export interface CycleFrontMatter {
-  id: string;         // "2026-03-04_01"
-  slug: string;       // "undefined" or "add-jwt-auth"
+  id: string; // "2026-03-04_01"
+  slug: string; // "undefined" or "add-jwt-auth"
   status: CycleStatus;
-  branch: string;     // "hal/2026-03-04_01_add-jwt-auth"
+  branch: string; // "hal/2026-03-04_01_add-jwt-auth"
   baseBranch: string; // "main" or "master"
   retryCount: number;
   startedAt: string;
