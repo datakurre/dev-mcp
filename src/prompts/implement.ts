@@ -66,7 +66,8 @@ export function buildImplementPrompt(): {
         `**Claimed Files (Scope):**\n${formatScope(def.scope)}` +
         `${forbiddenSection}${nonGoalsSection}${invariantsSection}${notesSection}` +
         `${priorFeedback}\n\n` +
-        `When done: call \`submit_implementation(cycleId: "${fm.id}", comment: "...")\``
+        `When done: call \`submit_implementation(cycleId: "${fm.id}", comment: "...")\`\n` +
+        `Then: check out the main branch to return to it: git checkout ${fm.baseBranch ?? "main"}`
       );
     })
     .join("\n\n---\n\n");
@@ -100,6 +101,7 @@ For each cycle below:
 4. Run existing tests if applicable
 5. Commit all changes
 6. Call submit_implementation(cycleId: "...", comment: "...") with a brief summary
+7. Check out the main branch to return to it: git checkout main
 
 ## Implementation Rules
 
